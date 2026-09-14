@@ -1,4 +1,14 @@
 @import 'tailwindcss';
+@import './admin-dashboard.css';
+@import './admin-readable.css';
+@import './vendor-modal.css';
+@import './vendor-modal-overrides.css';
+@import './vendor-pagination.css';
+@import './stall-management.css';
+@import './admin-account.css';
+@import './vendor-search.css';
+@import './auth.css';
+@import './rental-management.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
