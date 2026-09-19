@@ -1,0 +1,155 @@
+<x-layouts.admin title="Stall Management" active="stalls">
+    @php
+        $stalls = [
+            ['number' => 'A-001', 'section' => 'Section A', 'location' => 'Wet Market · Fish Stall Bay', 'type' => 'Wet Stall', 'dimensions' => '12.50 sq.m (2.5m x 5.0m)', 'vendor' => 'Elena Santos Rostova', 'business' => 'Rostova Seafood Depot', 'rate' => 3800, 'status' => 'Occupied'],
+            ['number' => 'A-004', 'section' => 'Section A', 'location' => 'Wet Market · Poultry Center', 'type' => 'Cold Storage Bay', 'dimensions' => '14.00 sq.m (3.5m x 4.0m)', 'vendor' => 'Marcus Chen', 'business' => 'Chen Premium Meats', 'rate' => 4200, 'status' => 'Occupied'],
+            ['number' => 'B-012', 'section' => 'Section B', 'location' => 'Dry Goods · Grains & Spices', 'type' => 'Dry Goods Booth', 'dimensions' => '10.00 sq.m (2.5m x 4.0m)', 'vendor' => null, 'business' => 'None / Vacant', 'rate' => 2900, 'status' => 'Available'],
+            ['number' => 'B-015', 'section' => 'Section B', 'location' => 'Dry Goods · Wholesale Grains', 'type' => 'Dry Goods Booth', 'dimensions' => '11.50 sq.m (2.5m x 5.0m)', 'vendor' => 'Danilo Santos', 'business' => 'Santos Rice Mart', 'rate' => 3100, 'status' => 'Occupied'],
+            ['number' => 'C-021', 'section' => 'Section C', 'location' => 'General Merchandise · Textiles', 'type' => 'Retail Stall', 'dimensions' => '8.00 sq.m (2.0m x 4.0m)', 'vendor' => 'Teresa Alcantara', 'business' => 'Application Under Review', 'rate' => 2500, 'status' => 'Reserved'],
+            ['number' => 'C-028', 'section' => 'Section C', 'location' => 'General Merchandise · Footwear', 'type' => 'Retail Stall', 'dimensions' => '9.20 sq.m (2.3m x 4.0m)', 'vendor' => null, 'business' => 'None / Vacant', 'rate' => 2650, 'status' => 'Available'],
+            ['number' => 'D-102', 'section' => 'Section D', 'location' => 'Food Court · Cooked Food', 'type' => 'Food Kiosk with Exhaust', 'dimensions' => '8.50 sq.m (2.5m x 3.4m)', 'vendor' => 'Mateo Reyes', 'business' => 'Reyes Carinderia Grill', 'rate' => 4500, 'status' => 'Occupied'],
+            ['number' => 'D-109', 'section' => 'Section D', 'location' => 'Food Court · Beverage Bar', 'type' => 'Kiosk Space', 'dimensions' => '7.00 sq.m (2.0m x 3.5m)', 'vendor' => null, 'business' => 'Scheduled Plumbing Repair', 'rate' => 3200, 'status' => 'Inactive'],
+        ];
+    @endphp
+
+    <div class="stall-management-page">
+        <div class="stall-breadcrumb">
+            StallTrack System &gt; <strong>Stall Inventory</strong>
+        </div>
+
+        <section class="stall-management-heading">
+            <div>
+                <h1>
+                    Stall Management
+                </h1>
+                <p>
+                    Manage market booths, occupancy status, and vendor assignments.
+                </p>
+            </div>
+            <div>
+                <button class="stall-filter-button">
+                    ⇩ Filter &amp; Export
+                </button>
+                <a class="stall-add-button" href="{{ route('vendors.create') }}">
+                    ＋ Add New Stall
+                </a>
+            </div>
+        </section>
+
+        <section class="stall-summary-grid">
+            <article>
+                <small>TOTAL STALLS</small>
+                <strong>150</strong>
+                <span>All physical units</span>
+                <i>▦</i>
+            </article>
+            <article>
+                <small>OCCUPIED UNITS</small>
+                <strong class="green-text">138</strong>
+                <span>92% Occupancy</span>
+                <i>▣</i>
+            </article>
+            <article>
+                <small>AVAILABLE STALLS</small>
+                <strong class="blue-text">8</strong>
+                <span>Ready to Lease</span>
+                <i>⊙</i>
+            </article>
+            <article>
+                <small>RESERVED / INACTIVE</small>
+                <strong>4</strong>
+                <span>Pending Lease</span>
+                <i>⌛</i>
+            </article>
+        </section>
+
+        <div class="stall-filter-bar">
+            <label>
+                <span>⌕</span>
+                <input type="search" placeholder="Search stall number, section, or vendor name..." oninput="filterStalls(this.value)">
+            </label>
+            <select>
+                <option>Section: &nbsp; All Sections</option>
+            </select>
+            <select>
+                <option>Status: &nbsp; All Statuses</option>
+            </select>
+            <button type="button" onclick="document.querySelector('.stall-filter-bar input').value=''; filterStalls('')">
+                ◌ Reset
+            </button>
+        </div>
+
+        <section class="stall-table-card">
+            <div class="stall-table-scroll">
+                <table class="stall-table" id="stall-table">
+                    <thead>
+                        <tr>
+                            <th>Stall No.</th>
+                            <th>Location / Section</th>
+                            <th>Type &amp; Dimensions</th>
+                            <th>Assigned Vendor</th>
+                            <th>Monthly Rate</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($stalls as $stall)
+                            <tr>
+                                <td>
+                                    <b class="stall-number">{{ $stall['number'] }}</b>
+                                </td>
+                                <td>
+                                    <strong>{{ $stall['section'] }}</strong>
+                                    <small>{{ $stall['location'] }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ $stall['type'] }}</strong>
+                                    <small>{{ $stall['dimensions'] }}</small>
+                                </td>
+                                <td>
+                                    @if ($stall['vendor'])
+                                        <strong>{{ $stall['vendor'] }}</strong>
+                                        <small>{{ $stall['business'] }}</small>
+                                    @else
+                                        <span class="vacant">— {{ $stall['business'] }} —</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <strong>₱{{ number_format($stall['rate'], 2) }}</strong>
+                                </td>
+                                <td>
+                                    <span class="stall-status {{ strtolower($stall['status']) }}">
+                                        ● {{ $stall['status'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ route('vendors.create') }}">
+                                        {{ $stall['status'] === 'Available' ? '+ Assign Vendor' : ($stall['status'] === 'Inactive' ? 'Reactivate' : 'Details') }}
+                                    </a> 
+                                    &nbsp; ✎
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="stall-table-footer">
+                Showing 1–8 of 150 stalls 
+                <span>
+                    ‹ &nbsp; <b>1</b> &nbsp; 2 &nbsp; 3 &nbsp; … &nbsp; 15 &nbsp; ›
+                </span>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function filterStalls(query) { 
+            const term = query.toLowerCase(); 
+            document.querySelectorAll('#stall-table tbody tr').forEach(row => { 
+                row.hidden = !row.innerText.toLowerCase().includes(term); 
+            }); 
+        }
+    </script>
+</x-layouts.admin>

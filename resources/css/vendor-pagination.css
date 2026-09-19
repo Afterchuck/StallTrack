@@ -1,5 +1,0 @@
-.vendor-directory-footer > span { display:flex; align-items:center; gap:9px; }
-.vendor-directory-footer a, .pagination-disabled { color:#53647d; text-decoration:none; }
-.vendor-directory-footer a:hover { color:#007d5a; }
-.vendor-directory-footer .pagination-current { display:inline-grid; width:21px; height:21px; place-items:center; border-radius:3px; background:#007d5a; color:#fff; }
-.pagination-disabled { color:#a8b2c1; }

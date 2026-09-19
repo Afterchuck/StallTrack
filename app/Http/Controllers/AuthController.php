@@ -68,7 +68,7 @@ class AuthController extends Controller
 
     public function dashboard(): View
     {
-        return view('dashboard', [
+        return view('admin.dashboard', [
             'vendors' => Vendor::latest()->get(),
             'payments' => Payment::latest('paid_at')->take(4)->get(),
         ]);
@@ -76,7 +76,7 @@ class AuthController extends Controller
 
     public function vendorDashboard(): View
     {
-        return view('vendor-dashboard', [
+        return view('vendor.dashboard', [
             'payments' => Payment::where('vendor_name', auth()->user()->name)->latest('paid_at')->get(),
         ]);
     }
@@ -99,7 +99,7 @@ class AuthController extends Controller
 
     public function createVendor(): View
     {
-        return view('vendors.create');
+        return view('admin.vendors.create');
     }
 
     public function vendors(Request $request): View|JsonResponse
@@ -145,17 +145,17 @@ class AuthController extends Controller
             ]);
         }
 
-        return view('vendors.index', ['vendors' => $vendors]);
+        return view('admin.vendors.index', ['vendors' => $vendors]);
     }
 
     public function stalls(): View
     {
-        return view('stalls.index');
+        return view('admin.stalls.index');
     }
 
     public function rentals(): View
     {
-        return view('rentals.index');
+        return view('admin.rentals.index');
     }
 
     public function storeVendor(Request $request): RedirectResponse
@@ -188,12 +188,12 @@ class AuthController extends Controller
 
     public function payments(): View
     {
-        return view('payments.index', ['payments' => Payment::latest('paid_at')->get(), 'active' => 'payments']);
+        return view('admin.payments.index', ['payments' => Payment::latest('paid_at')->get(), 'active' => 'payments']);
     }
 
     public function createPayment(): View
     {
-        return view('payments.create', ['vendors' => Vendor::orderBy('name')->get()]);
+        return view('admin.payments.create', ['vendors' => Vendor::orderBy('name')->get()]);
     }
 
     public function storePayment(Request $request): RedirectResponse
@@ -212,12 +212,12 @@ class AuthController extends Controller
 
     public function dueDates(): View
     {
-        return view('section', ['title' => 'Due Dates', 'description' => 'Keep contracts and payment deadlines on schedule.', 'active' => 'due-dates']);
+        return view('admin.section', ['title' => 'Due Dates', 'description' => 'Keep contracts and payment deadlines on schedule.', 'active' => 'due-dates']);
     }
 
     public function reports(): View
     {
-        return view('section', ['title' => 'Reports', 'description' => 'Review registration, payment, and stall activity.', 'active' => 'reports']);
+        return view('admin.section', ['title' => 'Reports', 'description' => 'Review registration, payment, and stall activity.', 'active' => 'reports']);
     }
 
     public function logout(Request $request): RedirectResponse
