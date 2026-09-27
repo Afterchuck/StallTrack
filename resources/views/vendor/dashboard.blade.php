@@ -16,7 +16,7 @@
                     Here is a quick view of your stall, lease, and payment records.
                 </p>
             </div>
-            <a class="hidden shrink-0 text-xs font-semibold text-[#252525] no-underline hover:underline sm:block" href="#lease">
+            <a class="hidden shrink-0 text-xs font-semibold text-[#252525] no-underline hover:underline sm:block" href="{{ route('vendor.stall') }}">
                 View lease details →
             </a>
         </section>
@@ -57,7 +57,7 @@
                             Your monthly rental fee of ₱1,200.00 is due on August 30, 2026.
                         </p>
                     </div>
-                    <a class="ml-auto shrink-0 text-xs font-semibold text-[#573b0b] no-underline hover:underline" href="#payment-form">
+                    <a class="ml-auto shrink-0 text-xs font-semibold text-[#573b0b] no-underline hover:underline" href="{{ route('vendor.payments') }}#payment-form">
                         Pay now →
                     </a>
                 </section>
@@ -72,7 +72,7 @@
                                 Payments submitted to Market Treasury.
                             </p>
                         </div>
-                        <a class="shrink-0 text-xs font-semibold text-[#252525] no-underline hover:underline" href="#payment-form">
+                        <a class="shrink-0 text-xs font-semibold text-[#252525] no-underline hover:underline" href="{{ route('vendor.payments') }}">
                             Submit payment
                         </a>
                     </div>
@@ -200,7 +200,7 @@
                         </div>
                     </dl>
 
-                    <a class="text-xs font-semibold text-[#252525] no-underline hover:underline" href="#lease">
+                    <a class="text-xs font-semibold text-[#252525] no-underline hover:underline" href="{{ route('vendor.stall') }}">
                         View full lease →
                     </a>
                 </section>

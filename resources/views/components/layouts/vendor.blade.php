@@ -1,4 +1,4 @@
-@props(['title' => 'Vendor Dashboard'])
+@props(['title' => 'Vendor Dashboard', 'active' => 'overview'])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -18,23 +18,22 @@
                 </small>
             </a>
 
-            <a class="mx-4 mt-5 flex items-center justify-center gap-2 rounded-[3px] bg-[#171717] px-3 py-3 text-xs font-semibold tracking-wide text-white no-underline transition hover:bg-black" href="#payment-form">
+            <a class="mx-4 mt-5 flex items-center justify-center gap-2 rounded-[3px] bg-[#171717] px-3 py-3 text-xs font-semibold tracking-wide text-white no-underline transition hover:bg-black" href="{{ route('vendor.payments') }}#payment-form">
                 <span class="text-base font-normal leading-none" aria-hidden="true">+</span> 
                 Record payment
             </a>
 
             <nav class="grid gap-1 px-4 py-5" aria-label="Vendor navigation">
                 @foreach ([
-                    ['Overview', route('vendor.dashboard'), 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
-                    ['My stall', '#lease', 'M6 3h9l3 3v15H6zM15 3v4h4M9 12h6M9 16h6'],
-                    ['Payments', '#payments', 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h4'],
-                    ['Notices', '#notices', 'M5 5h14v10H9l-4 4zM8 9h8'],
-                ] as [$label, $url, $icon])
+                    ['overview', 'Overview', route('vendor.dashboard'), 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
+                    ['stall', 'My stall', route('vendor.stall'), 'M6 3h9l3 3v15H6zM15 3v4h4M9 12h6M9 16h6'],
+                    ['payments', 'Payments', route('vendor.payments'), 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h4'],
+                ] as [$key, $label, $url, $icon])
                     <a @class([
                         'flex items-center gap-3 rounded-[3px] px-3 py-2.5 text-xs font-medium text-[#575757] no-underline transition hover:bg-[#e9e9e9] hover:text-[#111]',
-                        'bg-[#e2e2e2] font-semibold text-[#171717] shadow-[inset_-2px_0_0_#222]' => $label === 'Overview',
+                        'bg-[#e2e2e2] font-semibold text-[#171717] shadow-[inset_-2px_0_0_#222]' => $active === $key,
                     ]) href="{{ $url }}">
-                        <svg @class(['size-4 shrink-0 fill-none stroke-current stroke-[1.7]', 'fill-current stroke-none' => $label === 'Overview']) viewBox="0 0 24 24" aria-hidden="true">
+                        <svg @class(['size-4 shrink-0 fill-none stroke-current stroke-[1.7]', 'fill-current stroke-none' => $active === $key]) viewBox="0 0 24 24" aria-hidden="true">
                             <path d="{{ $icon }}" />
                         </svg>
                         {{ $label }}
@@ -87,7 +86,7 @@
                         <i class="size-1.5 rounded-full bg-emerald-500"></i> 
                         Lease active until Dec 2026
                     </span>
-                    <a class="rounded-[3px] border border-[#ddd] bg-white px-3 py-2 text-[10px] font-semibold text-[#333] no-underline hover:bg-[#f7f7f7]" href="#payment-form">
+                    <a class="rounded-[3px] border border-[#ddd] bg-white px-3 py-2 text-[10px] font-semibold text-[#333] no-underline hover:bg-[#f7f7f7]" href="{{ route('vendor.payments') }}#payment-form">
                         Record payment
                     </a>
                 </div>

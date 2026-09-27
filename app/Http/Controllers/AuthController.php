@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -77,7 +78,21 @@ class AuthController extends Controller
     public function vendorDashboard(): View
     {
         return view('vendor.dashboard', [
+            'vendor' => $this->currentVendor(),
             'payments' => Payment::where('vendor_name', auth()->user()->name)->latest('paid_at')->get(),
+        ]);
+    }
+
+    public function vendorStall(): View
+    {
+        return view('vendor.stall', ['vendor' => $this->currentVendor()]);
+    }
+
+    public function vendorPayments(): View
+    {
+        return view('vendor.payments', [
+            'vendor' => $this->currentVendor(),
+            'payments' => Payment::where('vendor_name', auth()->user()->name)->latest('paid_at')->paginate(10),
         ]);
     }
 
@@ -100,6 +115,83 @@ class AuthController extends Controller
     public function createVendor(): View
     {
         return view('admin.vendors.create');
+    }
+
+    public function showVendor(Vendor $vendor): View
+    {
+        return view('admin.vendors.show', [
+            'vendor' => $vendor,
+            'payments' => Payment::where('vendor_name', $vendor->name)->latest('paid_at')->get(),
+        ]);
+    }
+
+    public function editVendor(Vendor $vendor): View
+    {
+        return view('admin.vendors.edit', ['vendor' => $vendor]);
+    }
+
+    public function updateVendor(Request $request, Vendor $vendor): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'stall_number' => ['required', 'string', 'max:20'],
+            'contact_number' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:vendors,email,'.$vendor->id],
+            'residential_address' => ['nullable', 'string', 'max:1000'],
+            'market_section' => ['required', 'string', 'max:100'],
+            'monthly_rent' => ['required', 'numeric', 'min:0'],
+            'billing_cycle' => ['required', 'in:Monthly,Quarterly'],
+            'contract_start_date' => ['required', 'date'],
+            'contract_end_date' => ['required', 'date', 'after_or_equal:contract_start_date'],
+            'status' => ['required', 'in:Active,Inactive'],
+        ]);
+
+        DB::transaction(function () use ($validated, $vendor): void {
+            $originalName = $vendor->name;
+            $originalEmail = $vendor->email;
+
+            $vendor->update([...$validated, 'contract_until' => $validated['contract_end_date']]);
+            Payment::where('vendor_name', $originalName)->update(['vendor_name' => $vendor->name]);
+
+            User::where('email', $originalEmail)
+                ->where('role', 'vendor')
+                ->update(['name' => $vendor->name, 'email' => $vendor->email]);
+        });
+
+        return redirect()->route('vendors.show', $vendor)->with('success', 'Vendor details and linked payment records updated.');
+    }
+
+    public function destroyVendor(Vendor $vendor): RedirectResponse
+    {
+        DB::transaction(function () use ($vendor): void {
+            User::where('email', $vendor->email)->where('role', 'vendor')->delete();
+            $vendor->delete();
+        });
+
+        return redirect()->route('vendors.index')->with('success', 'Vendor account deleted. Payment records were retained for audit history.');
+    }
+
+    public function storeVendorPaymentForAdmin(Request $request, Vendor $vendor): RedirectResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'paid_at' => ['required', 'date'],
+            'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
+        ]);
+
+        Payment::create([...$validated, 'vendor_name' => $vendor->name]);
+
+        return redirect()->route('vendors.show', $vendor)->with('success', 'Payment recorded and reflected in the vendor portal.');
+    }
+
+    public function markVendorPaymentAsPaid(Request $request, Vendor $vendor, Payment $payment): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'admin', 403);
+        abort_unless($payment->vendor_name === $vendor->name, 404);
+
+        $payment->update(['status' => 'Paid']);
+
+        return redirect()->route('vendors.show', $vendor)->with('success', 'Payment marked as paid.');
     }
 
     public function vendors(Request $request): View|JsonResponse
@@ -227,5 +319,12 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function currentVendor(): ?Vendor
+    {
+        return Vendor::where('email', auth()->user()->email)
+            ->orWhere('name', auth()->user()->name)
+            ->first();
     }
 }
