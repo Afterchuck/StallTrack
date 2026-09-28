@@ -19,7 +19,7 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas('users', [
             'name' => 'Maria Clara Del Rosario',
             'email' => 'admin@example.com',
-            'mobile_number' => '+63 917 123 4567',
+            'mobile_number' => '+639171234567',
             'role' => 'admin',
         ]);
     }
@@ -47,7 +47,7 @@ class RegistrationTest extends TestCase
             'first_name' => 'Maria Clara',
             'last_name' => 'Del Rosario',
             'email' => 'admin@example.com',
-            'mobile_number' => '+63 917 123 4567',
+            'mobile_number' => '9171234567',
             'role' => 'admin',
             'password' => 'password123',
             'password_confirmation' => 'password123',

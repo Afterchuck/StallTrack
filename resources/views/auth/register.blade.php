@@ -62,7 +62,7 @@
 
             @foreach ([
                 ['email', 'Email Address', 'email', 'you@example.com'],
-                ['mobile_number', 'Mobile Number', 'tel', '+63 917 123 4567'],
+                ['mobile_number', 'Mobile Number', 'tel', '9171234567'],
                 ['password', 'Password', 'password', 'Create a password'],
                 ['password_confirmation', 'Confirm Password', 'password', 'Confirm your password']
             ] as [$id, $label, $type, $placeholder])
@@ -70,7 +70,7 @@
                     <label class="text-xs font-bold text-[#455269]" for="{{ $id }}">
                         {{ $label }}
                     </label>
-                    @if ($id === 'password' || $id === 'password_confirmation')
+                        @if ($id === 'password' || $id === 'password_confirmation')
                             <div class="relative">
                                 <input
                                     class="h-11 w-full rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 pr-12 text-sm text-[#172033] outline-none focus:border-[#007d5a] focus:bg-white focus:ring-3 focus:ring-[#007d5a]/12"
@@ -91,6 +91,23 @@
                                     Show
                                 </button>
                             </div>
+                        @elseif ($id === 'mobile_number')
+                            <div class="flex h-11 items-center rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 text-sm text-[#172033] focus-within:border-[#007d5a] focus-within:bg-white focus-within:ring-3 focus-within:ring-[#007d5a]/12">
+                                <span class="mr-2 border-r border-[#dfe7f3] pr-2 text-[#687587]">+63</span>
+                                <input
+                                    class="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-[#172033] outline-none"
+                                    id="{{ $id }}"
+                                    name="{{ $id }}"
+                                    type="tel"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                    pattern="[0-9]{10}"
+                                    value="{{ old($id) }}"
+                                    placeholder="{{ $placeholder }}"
+                                    title="Enter 10 digits after +63"
+                                    required
+                                >
+                            </div>
                         @else
                             <input
                                 class="h-11 w-full rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 text-sm text-[#172033] outline-none focus:border-[#007d5a] focus:bg-white focus:ring-3 focus:ring-[#007d5a]/12"
@@ -101,6 +118,12 @@
                                 placeholder="{{ $placeholder }}"
                                 required
                             >
+                        @endif
+                        @if ($id === 'mobile_number')
+                            <p class="text-xs text-[#687587]">Enter 10 digits after +63.</p>
+                            @error('mobile_number')
+                                <p class="text-xs text-[#a03333]" role="alert">{{ $message }}</p>
+                            @enderror
                         @endif
                     </div>
             @endforeach

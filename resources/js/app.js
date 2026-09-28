@@ -1,5 +1,14 @@
 //
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input[name="mobile_number"]').forEach((input) => {
+        const keepDigitsOnly = () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 10);
+        };
+
+        input.addEventListener('input', keepDigitsOnly);
+        keepDigitsOnly();
+    });
+
     document.querySelectorAll('.password-toggle').forEach((button) => {
         button.addEventListener('click', () => {
             const input = document.getElementById(button.dataset.target);

@@ -53,16 +53,20 @@ class AuthController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'mobile_number' => ['required', 'string', 'max:30'],
+            'mobile_number' => ['required', 'string', 'digits:10'],
             'role' => ['required', 'string', Rule::in(['admin', 'vendor'])],
             'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['accepted'],
+        ], [
+            'mobile_number.digits' => 'Enter the 10 digits after +63.',
         ]);
 
         $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
             'name' => $validated['first_name'].' '.$validated['last_name'],
             'email' => $validated['email'],
-            'mobile_number' => $validated['mobile_number'],
+            'mobile_number' => '+63'.$validated['mobile_number'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
         ]);

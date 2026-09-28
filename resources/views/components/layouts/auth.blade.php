@@ -9,9 +9,9 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body @class([
-    'm-0 min-h-screen bg-white font-[Arial,Helvetica,sans-serif] text-[#191919]',
-    'flex items-center justify-center px-[18px] py-8 max-[520px]:items-start max-[520px]:px-4 max-[520px]:py-6' => ($title ?? '') !== 'Create an account',
-    'block p-0' => ($title ?? '') === 'Create an account',
+    'm-0 min-h-screen font-[Arial,Helvetica,sans-serif] text-[#191919]',
+    'flex items-center justify-center bg-[#edf3ef] px-4 py-6 sm:px-6 sm:py-8' => ($title ?? '') !== 'Create an account',
+    'block bg-white p-0' => ($title ?? '') === 'Create an account',
 ])>
     {{ $slot }}
 </body>
