@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -49,22 +50,27 @@ class AuthController extends Controller
     public function register(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'mobile_number' => ['required', 'string', 'max:30'],
+            'role' => ['required', 'string', Rule::in(['admin', 'vendor'])],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'terms' => ['accepted'],
         ]);
 
         $user = User::create([
-            'name' => $validated['name'],
+            'name' => $validated['first_name'].' '.$validated['last_name'],
             'email' => $validated['email'],
+            'mobile_number' => $validated['mobile_number'],
             'password' => Hash::make($validated['password']),
-            'role' => 'vendor',
+            'role' => $validated['role'],
         ]);
 
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('vendor.dashboard');
+        return redirect()->route($user->role === 'vendor' ? 'vendor.dashboard' : 'dashboard');
     }
 
     public function dashboard(): View

@@ -38,11 +38,30 @@
                         Forgot Password?
                     </a>
                 </div>
+
                 <div class="relative">
                     <span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-lg text-[#797171]">
                         ▣
                     </span>
-                    <input class="h-[38px] w-full rounded-[2px] border border-[#d8cdcd] bg-white py-0 pr-3 pl-8 text-[13px] text-[#333] outline-none transition focus:border-black focus:ring-2 focus:ring-black/10" id="password" name="password" type="password" placeholder="••••••••" required>
+
+                    <input
+                        class="h-[38px] w-full rounded-[2px] border border-[#d8cdcd] bg-white py-0 pr-12 pl-8 text-[13px] text-[#333] outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="password-toggle absolute inset-y-0 right-2 my-auto rounded text-[10px] font-bold uppercase tracking-[.08em] text-[#464040]"
+                        data-target="password"
+                        aria-label="Show password"
+                        aria-pressed="false"
+                    >
+                        Show
+                    </button>
                 </div>
             </div>
             <button class="mt-1 h-[38px] w-full cursor-pointer rounded-[2px] border-0 bg-black font-mono text-[10px] font-bold uppercase tracking-[.15em] text-white transition hover:bg-neutral-800" type="submit">
@@ -52,6 +71,13 @@
                 </span>
             </button>
         </form>
+        <div class="mt-6 text-center">
+            <span class="text-sm text-[#625c5c]">New?</span>
+            <a href="{{ route('register') }}"
+            class="ml-1 text-sm font-semibold text-black underline hover:no-underline">
+                Create New
+            </a>
+        </div>
 
         <div class="mt-9 text-center font-mono text-[10px] leading-[1.35] tracking-[.07em] text-[#716969]">
             <p class="m-0">

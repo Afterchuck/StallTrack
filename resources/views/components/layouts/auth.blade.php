@@ -10,8 +10,8 @@
 </head>
 <body @class([
     'm-0 min-h-screen bg-white font-[Arial,Helvetica,sans-serif] text-[#191919]',
-    'flex items-center justify-center px-[18px] py-8 max-[520px]:items-start max-[520px]:px-4 max-[520px]:py-6' => ($title ?? '') !== 'Vendor registration',
-    'block p-0' => ($title ?? '') === 'Vendor registration',
+    'flex items-center justify-center px-[18px] py-8 max-[520px]:items-start max-[520px]:px-4 max-[520px]:py-6' => ($title ?? '') !== 'Create an account',
+    'block p-0' => ($title ?? '') === 'Create an account',
 ])>
     {{ $slot }}
 </body>

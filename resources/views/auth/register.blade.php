@@ -1,4 +1,4 @@
-<x-layouts.auth title="Vendor registration">
+<x-layouts.auth title="Create an account">
     <header class="flex min-h-16 items-center justify-between border-y border-[#dbe5f3] bg-white px-10 max-[520px]:px-[18px]">
         <a class="flex items-center gap-2.5 text-base text-[#17243a] no-underline" href="{{ route('login') }}">
             <span class="grid size-[30px] place-items-center rounded bg-[#007d5a] text-[17px] text-white">
@@ -36,9 +36,19 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('register.store') }}" class="register-form grid gap-[17px]">
+        <form method="POST" action="{{ route('register.store') }}" class="grid gap-[17px]">
             @csrf
-            
+
+            <fieldset class="grid grid-cols-2 overflow-hidden rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] p-1">
+                <legend class="sr-only">Account type</legend>
+                @foreach (['admin' => 'Market Staff / Admin', 'vendor' => 'Vendor / Stallholder'] as $value => $label)
+                    <label class="cursor-pointer rounded-[3px] px-2 py-3 text-center text-xs font-bold text-[#687587] transition has-[:checked]:bg-white has-[:checked]:text-[#007d5a] has-[:checked]:shadow-sm">
+                        <input class="sr-only" name="role" type="radio" value="{{ $value }}" @checked(old('role', 'admin') === $value)>
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </fieldset>
+
             <div class="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
                 @foreach ([['first_name', 'First Name', 'Maria Clara'], ['last_name', 'Last Name', 'Del Rosario']] as [$id, $label, $placeholder])
                     <div class="grid gap-[6px]">
@@ -50,17 +60,53 @@
                 @endforeach
             </div>
 
-            @foreach ([['email', 'Email Address', 'email', 'you@example.com'], ['mobile_number', 'Mobile Number', 'tel', '+63 917 123 4567'], ['password', 'Password', 'password', 'Create a password'], ['password_confirmation', 'Confirm Password', 'password', 'Confirm your password']] as [$id, $label, $type, $placeholder])
+            @foreach ([
+                ['email', 'Email Address', 'email', 'you@example.com'],
+                ['mobile_number', 'Mobile Number', 'tel', '+63 917 123 4567'],
+                ['password', 'Password', 'password', 'Create a password'],
+                ['password_confirmation', 'Confirm Password', 'password', 'Confirm your password']
+            ] as [$id, $label, $type, $placeholder])
                 <div class="grid gap-[6px]">
                     <label class="text-xs font-bold text-[#455269]" for="{{ $id }}">
                         {{ $label }}
                     </label>
-                    <input class="h-11 w-full rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 text-sm text-[#172033] outline-none focus:border-[#007d5a] focus:bg-white focus:ring-3 focus:ring-[#007d5a]/12" id="{{ $id }}" name="{{ $id }}" type="{{ $type }}" value="{{ $type === 'password' ? '' : old($id) }}" placeholder="{{ $placeholder }}" required>
-                </div>
+                    @if ($id === 'password' || $id === 'password_confirmation')
+                            <div class="relative">
+                                <input
+                                    class="h-11 w-full rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 pr-12 text-sm text-[#172033] outline-none focus:border-[#007d5a] focus:bg-white focus:ring-3 focus:ring-[#007d5a]/12"
+                                    id="{{ $id }}"
+                                    name="{{ $id }}"
+                                    type="password"
+                                    value=""
+                                    placeholder="{{ $placeholder }}"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="password-toggle absolute inset-y-0 right-2 my-auto rounded text-[11px] font-bold text-[#007d5a]"
+                                    data-target="{{ $id }}"
+                                    aria-label="Show password"
+                                    aria-pressed="false"
+                                >
+                                    Show
+                                </button>
+                            </div>
+                        @else
+                            <input
+                                class="h-11 w-full rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-3 text-sm text-[#172033] outline-none focus:border-[#007d5a] focus:bg-white focus:ring-3 focus:ring-[#007d5a]/12"
+                                id="{{ $id }}"
+                                name="{{ $id }}"
+                                type="{{ $type }}"
+                                value="{{ old($id) }}"
+                                placeholder="{{ $placeholder }}"
+                                required
+                            >
+                        @endif
+                    </div>
             @endforeach
 
             <label class="flex items-center gap-[6px] text-xs leading-[1.3] text-[#687587]">
-                <input class="size-3.5 accent-[#007d5a]" type="checkbox" required>
+                <input class="size-3.5 accent-[#007d5a]" name="terms" type="checkbox" value="1" @checked(old('terms')) required>
                 I agree to the 
                 <a class="text-[#007d5a] no-underline" href="#">
                     Terms of Service
@@ -70,8 +116,6 @@
                     Privacy Policy
                 </a>
             </label>
-
-            <input type="hidden" id="name" name="name" value="{{ old('name') }}">
 
             <button class="min-h-[46px] w-full cursor-pointer rounded-[5px] border-0 bg-[#007d5a] text-[13px] font-bold text-white transition hover:bg-[#006548]" type="submit">
                 Create Account
@@ -86,12 +130,4 @@
         </div>
     </main>
 
-    <script>
-        document.querySelector('.register-form').addEventListener('submit', function () { 
-            document.querySelector('#name').value = [
-                document.querySelector('#first_name').value, 
-                document.querySelector('#last_name').value
-            ].filter(Boolean).join(' '); 
-        });
-    </script>
 </x-layouts.auth>
