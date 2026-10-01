@@ -188,4 +188,17 @@
         .vendor-modal-form { @apply grid-cols-1; }
         .vendor-modal-field.full, .vendor-modal-actions { @apply col-span-1; }
     }
+
+    @media (max-width: 640px) {
+        .payment-page-heading h1 { @apply flex flex-wrap items-baseline gap-x-2 gap-y-1 text-2xl; }
+        .payment-page-heading small { @apply ml-0 block basis-full text-xs; }
+        .payments-toolbar { @apply flex-col items-stretch; }
+        .payments-toolbar .black-button { @apply w-full; }
+        .payment-filters { @apply flex-col items-stretch; }
+        .payment-search, .payment-date { @apply w-full; }
+        .vendor-summary-grid, .rental-summary-grid, .metrics-grid { @apply grid-cols-1; }
+        .vendor-directory-table, .rental-table, .stall-table, .dashboard-table, .table-card table { @apply min-w-[560px]; }
+        .vendor-management-actions, .vendor-filter-bar { @apply items-stretch; }
+        .vendor-management-actions > *, .vendor-filter-bar > * { @apply w-full; }
+    }
 }

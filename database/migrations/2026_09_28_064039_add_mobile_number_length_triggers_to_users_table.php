@@ -10,6 +10,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER users_mobile_number_must_be_11_digits_on_insert
             BEFORE INSERT ON users
@@ -36,6 +40,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         DB::unprepared('DROP TRIGGER IF EXISTS users_mobile_number_must_be_11_digits_on_insert');
         DB::unprepared('DROP TRIGGER IF EXISTS users_mobile_number_must_be_11_digits_on_update');
     }

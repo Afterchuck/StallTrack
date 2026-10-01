@@ -32,6 +32,10 @@ return new class extends Migration
             }
         }
 
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER users_mobile_number_must_use_plus_63_on_insert
             BEFORE INSERT ON users
@@ -69,6 +73,10 @@ return new class extends Migration
                     'mobile_number' => '0'.substr($mobileNumber, 3),
                 ]);
             }
+        }
+
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
         }
 
         DB::unprepared(<<<'SQL'

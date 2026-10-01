@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Models\Rental;
+use App\Models\Stall;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -54,7 +55,6 @@ class AuthController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'mobile_number' => ['required', 'string', 'digits:10'],
-            'role' => ['required', 'string', Rule::in(['admin', 'vendor'])],
             'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['accepted'],
         ], [
@@ -68,7 +68,15 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'mobile_number' => '+63'.$validated['mobile_number'],
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
+            'role' => 'vendor',
+        ]);
+
+        Vendor::create([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'contact_number' => $user->mobile_number,
+            'status' => 'Pending',
         ]);
 
         Auth::login($user);
@@ -89,7 +97,9 @@ class AuthController extends Controller
     {
         return view('vendor.dashboard', [
             'vendor' => $this->currentVendor(),
-            'payments' => Payment::where('vendor_name', auth()->user()->name)->latest('paid_at')->get(),
+            'payments' => Payment::where('vendor_id', $this->currentVendor()?->id)
+                ->orWhere(fn ($query) => $query->whereNull('vendor_id')->where('vendor_name', auth()->user()->name))
+                ->latest('paid_at')->get(),
         ]);
     }
 
@@ -102,7 +112,9 @@ class AuthController extends Controller
     {
         return view('vendor.payments', [
             'vendor' => $this->currentVendor(),
-            'payments' => Payment::where('vendor_name', auth()->user()->name)->latest('paid_at')->paginate(10),
+            'payments' => Payment::where('vendor_id', $this->currentVendor()?->id)
+                ->orWhere(fn ($query) => $query->whereNull('vendor_id')->where('vendor_name', auth()->user()->name))
+                ->latest('paid_at')->paginate(10),
         ]);
     }
 
@@ -117,7 +129,7 @@ class AuthController extends Controller
             'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        Payment::create($validated);
+        Payment::create([...$validated, 'vendor_id' => $this->currentVendor()?->id]);
 
         return redirect()->route('vendor.dashboard')->with('success', 'Payment submitted successfully.');
     }
@@ -131,7 +143,7 @@ class AuthController extends Controller
     {
         return view('admin.vendors.show', [
             'vendor' => $vendor,
-            'payments' => Payment::where('vendor_name', $vendor->name)->latest('paid_at')->get(),
+            'payments' => $vendor->payments()->latest('paid_at')->get(),
         ]);
     }
 
@@ -161,7 +173,7 @@ class AuthController extends Controller
             $originalEmail = $vendor->email;
 
             $vendor->update([...$validated, 'contract_until' => $validated['contract_end_date']]);
-            Payment::where('vendor_name', $originalName)->update(['vendor_name' => $vendor->name]);
+            Payment::where('vendor_name', $originalName)->update(['vendor_name' => $vendor->name, 'vendor_id' => $vendor->id]);
 
             User::where('email', $originalEmail)
                 ->where('role', 'vendor')
@@ -189,7 +201,7 @@ class AuthController extends Controller
             'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        Payment::create([...$validated, 'vendor_name' => $vendor->name]);
+        Payment::create([...$validated, 'vendor_id' => $vendor->id, 'vendor_name' => $vendor->name]);
 
         return redirect()->route('vendors.show', $vendor)->with('success', 'Payment recorded and reflected in the vendor portal.');
     }
@@ -197,7 +209,7 @@ class AuthController extends Controller
     public function markVendorPaymentAsPaid(Request $request, Vendor $vendor, Payment $payment): RedirectResponse
     {
         abort_unless($request->user()->role === 'admin', 403);
-        abort_unless($payment->vendor_name === $vendor->name, 404);
+        abort_unless($payment->vendor_id === $vendor->id || $payment->vendor_name === $vendor->name, 404);
 
         $payment->update(['status' => 'Paid']);
 
@@ -252,12 +264,12 @@ class AuthController extends Controller
 
     public function stalls(): View
     {
-        return view('admin.stalls.index');
+        return view('admin.stalls.index', ['stalls' => Stall::with('rentals.vendor')->orderBy('stall_number')->get()]);
     }
 
     public function rentals(): View
     {
-        return view('admin.rentals.index');
+        return view('admin.rentals.index', ['rentals' => Rental::with(['vendor', 'stall'])->latest('start_date')->get()]);
     }
 
     public function storeVendor(Request $request): RedirectResponse
@@ -307,7 +319,8 @@ class AuthController extends Controller
             'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        Payment::create($validated);
+        $vendor = Vendor::where('name', $validated['vendor_name'])->firstOrFail();
+        Payment::create([...$validated, 'vendor_id' => $vendor->id]);
 
         return redirect()->route('payments')->with('success', 'Payment recorded successfully.');
     }
@@ -333,8 +346,9 @@ class AuthController extends Controller
 
     private function currentVendor(): ?Vendor
     {
-        return Vendor::where('email', auth()->user()->email)
-            ->orWhere('name', auth()->user()->name)
-            ->first();
+        return auth()->user()->vendor
+            ?? Vendor::where('email', auth()->user()->email)
+                ->orWhere('name', auth()->user()->name)
+                ->first();
     }
 }

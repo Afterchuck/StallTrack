@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vendor extends Model
 {
     protected $fillable = [
-        'name', 'stall_number', 'contract_until', 'status', 'contact_number',
+        'user_id', 'name', 'stall_number', 'contract_until', 'status', 'contact_number',
         'email', 'residential_address', 'photo_path', 'market_section',
         'monthly_rent', 'billing_cycle', 'contract_start_date', 'contract_end_date',
     ];
@@ -20,5 +22,20 @@ class Vendor extends Model
             'contract_end_date' => 'date',
             'monthly_rent' => 'decimal:2',
         ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function rentals(): HasMany
+    {
+        return $this->hasMany(Rental::class);
     }
 }

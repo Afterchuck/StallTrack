@@ -20,12 +20,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
-    Route::get('/vendor-dashboard', [AuthController::class, 'vendorDashboard'])->name('vendor.dashboard');
-    Route::get('/my-stall', [AuthController::class, 'vendorStall'])->name('vendor.stall');
-    Route::get('/vendor-payments', [AuthController::class, 'vendorPayments'])->name('vendor.payments');
-    Route::post('/vendor-payments', [AuthController::class, 'storeVendorPayment'])->name('vendor.payments.store');
     Route::get('/vendors', [AuthController::class, 'vendors'])->name('vendors.index');
     Route::get('/vendors/create', [AuthController::class, 'createVendor'])->name('vendors.create');
     Route::get('/vendors/{vendor}', [AuthController::class, 'showVendor'])->name('vendors.show');
@@ -42,5 +38,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/payments', [AuthController::class, 'storePayment'])->name('payments.store');
     Route::get('/due-dates', [AuthController::class, 'dueDates'])->name('due-dates');
     Route::get('/reports', [AuthController::class, 'reports'])->name('reports');
+});
+
+Route::middleware(['auth', 'role:vendor'])->group(function () {
+    Route::get('/vendor-dashboard', [AuthController::class, 'vendorDashboard'])->name('vendor.dashboard');
+    Route::get('/my-stall', [AuthController::class, 'vendorStall'])->name('vendor.stall');
+    Route::get('/vendor-payments', [AuthController::class, 'vendorPayments'])->name('vendor.payments');
+});
+
+Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

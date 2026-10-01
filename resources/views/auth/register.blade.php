@@ -39,15 +39,9 @@
         <form method="POST" action="{{ route('register.store') }}" class="grid gap-[17px]">
             @csrf
 
-            <fieldset class="grid grid-cols-2 overflow-hidden rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] p-1">
-                <legend class="sr-only">Account type</legend>
-                @foreach (['admin' => 'Market Staff / Admin', 'vendor' => 'Vendor / Stallholder'] as $value => $label)
-                    <label class="cursor-pointer rounded-[3px] px-2 py-3 text-center text-xs font-bold text-[#687587] transition has-[:checked]:bg-white has-[:checked]:text-[#007d5a] has-[:checked]:shadow-sm">
-                        <input class="sr-only" name="role" type="radio" value="{{ $value }}" @checked(old('role', 'admin') === $value)>
-                        {{ $label }}
-                    </label>
-                @endforeach
-            </fieldset>
+            <p class="rounded-[5px] border border-[#dfe7f3] bg-[#f2f6fe] px-4 py-3 text-center text-xs font-bold text-[#687587]">
+                Vendor / Stallholder registration
+            </p>
 
             <div class="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
                 @foreach ([['first_name', 'First Name', 'Maria Clara'], ['last_name', 'Last Name', 'Del Rosario']] as [$id, $label, $placeholder])
