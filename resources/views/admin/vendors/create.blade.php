@@ -87,6 +87,27 @@
                 </h2>
 
                 <div class="form-field">
+                    <label for="stall_number">
+                        Stall number
+                    </label>
+                    <select id="stall_number" name="stall_number" required>
+                        <option value="">
+                            Select available stall
+                        </option>
+                        @forelse ($stalls as $stall)
+                            <option value="{{ $stall->stall_number }}"
+                                data-section="{{ $stall->market_section }}"
+                                data-rate="{{ $stall->monthly_rate }}"
+                                @selected(old('stall_number') === $stall->stall_number)>
+                                {{ $stall->stall_number }} - {{ $stall->market_section }} (Available)
+                            </option>
+                        @empty
+                            <option value="" disabled>No available stalls</option>
+                        @endforelse
+                    </select>
+                </div>
+
+                <div class="form-field">
                     <label for="market_section">
                         Market section
                     </label>
@@ -103,28 +124,14 @@
                         <option {{ old('market_section') === 'Food Court' ? 'selected' : '' }}>
                             Food Court
                         </option>
-                    </select>
-                </div>
-
-                <div class="form-field">
-                    <label for="stall_number">
-                        Stall number
-                    </label>
-                    <select id="stall_number" name="stall_number" required>
-                        <option value="">
-                            Select stall
+                        <option {{ old('market_section') === 'General Merchandise' ? 'selected' : '' }}>
+                            General Merchandise
                         </option>
-                        <option>
-                            A-14
+                        <option {{ old('market_section') === 'Wet Market' ? 'selected' : '' }}>
+                            Wet Market
                         </option>
-                        <option>
-                            B-07
-                        </option>
-                        <option>
-                            C-22
-                        </option>
-                        <option>
-                            D-03
+                        <option {{ old('market_section') === 'Apparel & Footwear' ? 'selected' : '' }}>
+                            Apparel & Footwear
                         </option>
                     </select>
                 </div>
@@ -135,9 +142,9 @@
                     </label>
                     <div class="money-input">
                         <span>
-                            $
+                            ₱
                         </span>
-                        <input id="monthly_rent" name="monthly_rent" type="number" step="0.01" min="0" value="{{ old('monthly_rent', '450.00') }}" required>
+                        <input id="monthly_rent" name="monthly_rent" type="number" step="0.01" min="0" value="{{ old('monthly_rent', '3500.00') }}" required>
                     </div>
                     <small class="field-help">
                         *Rate is auto-calculated based on stall selection.
@@ -194,6 +201,32 @@
                     →
                 </span>
             </button>
-        </div>
     </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const stallSelect = document.getElementById('stall_number');
+            const sectionSelect = document.getElementById('market_section');
+            const rateInput = document.getElementById('monthly_rent');
+
+            if (stallSelect) {
+                stallSelect.addEventListener('change', function () {
+                    const opt = this.options[this.selectedIndex];
+                    if (opt && opt.dataset) {
+                        if (opt.dataset.section && sectionSelect) {
+                            for (let i = 0; i < sectionSelect.options.length; i++) {
+                                if (sectionSelect.options[i].value === opt.dataset.section || sectionSelect.options[i].text === opt.dataset.section) {
+                                    sectionSelect.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        if (opt.dataset.rate && rateInput) {
+                            rateInput.value = parseFloat(opt.dataset.rate).toFixed(2);
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </x-layouts.admin>
