@@ -7,6 +7,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen flex-col bg-[#f7f9fc] font-[Arial,Helvetica,sans-serif] text-[#192235]">
+    @php($openSupportRequestsCount = \App\Models\VendorSupportRequest::whereIn('status', ['Open', 'In Progress'])->count())
     <header class="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-7 bg-[#0d1a31] px-4 text-white shadow-md md:flex-nowrap md:px-8">
         <a class="flex items-center gap-2.5 text-lg font-bold text-white no-underline" href="{{ route('dashboard') }}">
             <span class="grid size-5 place-items-center rounded bg-[#08b98a] text-[11px]">▥</span>
@@ -14,9 +15,12 @@
         </a>
 
         <nav class="order-3 flex w-full items-center gap-2 overflow-x-auto md:order-none md:w-auto" aria-label="Main navigation">
-            @foreach (['dashboard' => ['Dashboard', route('dashboard')], 'vendors' => ['Vendors', route('vendors.index')], 'stalls' => ['Stalls', route('stalls')], 'rentals' => ['Rentals', route('rentals')], 'payments' => ['Collections', route('payments')], 'reports' => ['Reports', route('reports')]] as $key => [$label, $url])
+            @foreach (['dashboard' => ['Dashboard', route('dashboard')], 'vendors' => ['Vendors', route('vendors.index')], 'stalls' => ['Stalls', route('stalls')], 'rentals' => ['Rentals', route('rentals')], 'payments' => ['Collections', route('payments')], 'reports' => ['Reports', route('reports')], 'support' => ['Support inbox', route('admin.support.index')]] as $key => [$label, $url])
                 <a @class(['rounded-md px-4 py-2.5 text-sm font-medium text-slate-300 no-underline transition hover:bg-white/10 hover:text-white', 'bg-[#087e69] text-white' => ($active ?? 'dashboard') === $key]) href="{{ $url }}">
                     {{ $label }}
+                    @if ($key === 'support' && $openSupportRequestsCount > 0)
+                        <span class="ml-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">{{ $openSupportRequestsCount }}</span>
+                    @endif
                 </a>
             @endforeach
         </nav>

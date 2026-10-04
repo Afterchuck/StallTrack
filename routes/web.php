@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AdminSupportRequestController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\VendorSupportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -42,12 +44,21 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/payments', [AuthController::class, 'storePayment'])->name('payments.store');
     Route::get('/due-dates', [AuthController::class, 'dueDates'])->name('due-dates');
     Route::get('/reports', [AuthController::class, 'reports'])->name('reports');
+    Route::get('/support-requests', [AdminSupportRequestController::class, 'index'])->name('admin.support.index');
+    Route::get('/support-requests/{supportRequest}', [AdminSupportRequestController::class, 'show'])->name('admin.support.show');
+    Route::patch('/support-requests/{supportRequest}', [AdminSupportRequestController::class, 'update'])->name('admin.support.update');
 });
 
 Route::middleware(['auth', 'role:vendor'])->group(function () {
     Route::get('/vendor-dashboard', [AuthController::class, 'vendorDashboard'])->name('vendor.dashboard');
     Route::get('/my-stall', [AuthController::class, 'vendorStall'])->name('vendor.stall');
     Route::get('/vendor-payments', [AuthController::class, 'vendorPayments'])->name('vendor.payments');
+    Route::get('/vendor-payments/{payment}/receipt', [AuthController::class, 'vendorPaymentReceipt'])->name('vendor.payments.receipt');
+    Route::get('/vendor-notifications', [AuthController::class, 'vendorNotifications'])->name('vendor.notifications');
+    Route::post('/vendor-notifications/read-all', [AuthController::class, 'markAllVendorNotificationsAsRead'])->name('vendor.notifications.read-all');
+    Route::post('/vendor-notifications/{notification}/read', [AuthController::class, 'markVendorNotificationAsRead'])->name('vendor.notifications.read');
+    Route::get('/help-support', [VendorSupportController::class, 'index'])->name('vendor.support.index');
+    Route::post('/help-support', [VendorSupportController::class, 'store'])->name('vendor.support.store');
 });
 
 Route::middleware('auth')->group(function () {

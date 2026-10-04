@@ -7,6 +7,7 @@ use App\Models\Rental;
 use App\Models\Stall;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Notifications\VendorUpdateNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -116,6 +117,43 @@ class AuthController extends Controller
                 ->orWhere(fn ($query) => $query->whereNull('vendor_id')->where('vendor_name', auth()->user()->name))
                 ->latest('paid_at')->paginate(10),
         ]);
+    }
+
+    public function vendorPaymentReceipt(Request $request, Payment $payment): View
+    {
+        $vendor = $this->currentVendor();
+
+        abort_unless($vendor && (
+            $payment->vendor_id === $vendor->id
+            || ($payment->vendor_id === null && $payment->vendor_name === $request->user()->name)
+        ), 404);
+        abort_unless($payment->status === 'Paid', 404);
+
+        return view('vendor.receipt', [
+            'vendor' => $vendor,
+            'payment' => $payment,
+        ]);
+    }
+
+    public function vendorNotifications(Request $request): View
+    {
+        return view('vendor.notifications', [
+            'notifications' => $request->user()->notifications()->latest()->paginate(15),
+        ]);
+    }
+
+    public function markVendorNotificationAsRead(Request $request, string $notification): RedirectResponse
+    {
+        $request->user()->notifications()->whereKey($notification)->firstOrFail()->markAsRead();
+
+        return back()->with('success', 'Notification marked as read.');
+    }
+
+    public function markAllVendorNotificationsAsRead(Request $request): RedirectResponse
+    {
+        $request->user()->unreadNotifications()->update(['read_at' => now()]);
+
+        return back()->with('success', 'All notifications marked as read.');
     }
 
     public function storeVendorPayment(Request $request): RedirectResponse
@@ -229,6 +267,10 @@ class AuthController extends Controller
             }
         });
 
+        if ($vendor->wasChanged()) {
+            $this->notifyVendor($vendor, 'Your account was updated', 'Market Administration updated your vendor, stall, or contract details.');
+        }
+
         return redirect()->route('vendors.show', $vendor)->with('success', 'Vendor details and linked payment records updated.');
     }
 
@@ -255,6 +297,7 @@ class AuthController extends Controller
         ]);
 
         Payment::create([...$validated, 'vendor_id' => $vendor->id, 'vendor_name' => $vendor->name]);
+        $this->notifyVendor($vendor, 'A payment was recorded', 'Market Administration recorded a payment for your account.');
 
         return redirect()->route('vendors.show', $vendor)->with('success', 'Payment recorded and reflected in the vendor portal.');
     }
@@ -265,6 +308,10 @@ class AuthController extends Controller
         abort_unless($payment->vendor_id === $vendor->id || $payment->vendor_name === $vendor->name, 404);
 
         $payment->update(['status' => 'Paid']);
+
+        if ($payment->wasChanged('status')) {
+            $this->notifyVendor($vendor, 'Payment marked as paid', "Receipt {$payment->receipt_number} was marked as paid by Market Administration.");
+        }
 
         return redirect()->route('vendors.show', $vendor)->with('success', 'Payment marked as paid.');
     }
@@ -357,6 +404,18 @@ class AuthController extends Controller
 
         $stall->update($validated);
 
+        if ($stall->wasChanged()) {
+            $vendors = Vendor::whereIn('id', Rental::where('stall_id', $stall->id)
+                ->where('status', 'Active')
+                ->pluck('vendor_id')
+                ->unique())
+                ->get();
+
+            foreach ($vendors as $vendor) {
+                $this->notifyVendor($vendor, 'Your stall was updated', "Market Administration updated the details for stall {$stall->stall_number}.");
+            }
+        }
+
         return redirect()->route('stalls')->with('success', "Stall {$stall->stall_number} updated successfully.");
     }
 
@@ -408,11 +467,18 @@ class AuthController extends Controller
             }
         });
 
+        $vendor = Vendor::find($validated['vendor_id']);
+        if ($vendor) {
+            $this->notifyVendor($vendor, 'A rental contract was added', "Market Administration added rental contract {$validated['contract_number']} to your account.");
+        }
+
         return redirect()->route('rentals')->with('success', "Rental contract {$validated['contract_number']} executed successfully.");
     }
 
     public function updateRental(Request $request, Rental $rental): RedirectResponse
     {
+        $previousVendorId = $rental->vendor_id;
+
         $validated = $request->validate([
             'vendor_id' => ['required', 'exists:vendors,id'],
             'stall_id' => ['required', 'exists:stalls,id'],
@@ -468,6 +534,14 @@ class AuthController extends Controller
                 ]);
             }
         });
+
+        if ($rental->wasChanged()) {
+            $affectedVendors = Vendor::whereIn('id', array_unique([$previousVendorId, $rental->vendor_id]))->get();
+
+            foreach ($affectedVendors as $vendor) {
+                $this->notifyVendor($vendor, 'A rental contract was updated', "Market Administration updated rental contract {$rental->contract_number}.");
+            }
+        }
 
         return redirect()->route('rentals')->with('success', "Rental contract {$rental->contract_number} updated successfully.");
     }
@@ -544,6 +618,7 @@ class AuthController extends Controller
 
         $vendor = Vendor::where('name', $validated['vendor_name'])->firstOrFail();
         Payment::create([...$validated, 'vendor_id' => $vendor->id]);
+        $this->notifyVendor($vendor, 'A payment was recorded', 'Market Administration recorded a payment for your account.');
 
         return redirect()->route('payments')->with('success', 'Payment recorded successfully.');
     }
@@ -573,5 +648,24 @@ class AuthController extends Controller
             ?? Vendor::where('email', auth()->user()->email)
                 ->orWhere('name', auth()->user()->name)
                 ->first();
+    }
+
+    private function notifyVendor(Vendor $vendor, string $title, string $message): void
+    {
+        $recipient = $vendor->user;
+
+        if (! $recipient) {
+            $recipient = User::where('role', 'vendor')
+                ->where(function ($query) use ($vendor): void {
+                    if ($vendor->email) {
+                        $query->where('email', $vendor->email);
+                    }
+
+                    $query->orWhere('name', $vendor->name);
+                })
+                ->first();
+        }
+
+        $recipient?->notify(new VendorUpdateNotification($title, $message));
     }
 }
