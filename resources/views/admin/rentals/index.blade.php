@@ -14,6 +14,9 @@
     @if (session('success'))
         <div class="success-alert">{{ session('success') }}</div>
     @endif
+    @if (session('error'))
+        <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">{{ session('error') }}</div>
+    @endif
 
     <section class="vendor-summary-grid">
         <article><small>Total contracts</small><strong>{{ $rentals->count() }}</strong></article>
@@ -90,6 +93,10 @@
                                         onclick='openEditRentalModal(@json($rental))'>
                                         <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                     </button>
+                                    <form class="inline" method="POST" action="{{ route('rentals.destroy', $rental) }}" data-confirm="Delete this contract? Active contracts must be closed first.">
+                                        @csrf @method('DELETE')
+                                        <button class="inline-flex h-7 items-center rounded border border-rose-200 bg-white px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

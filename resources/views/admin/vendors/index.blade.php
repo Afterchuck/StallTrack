@@ -14,11 +14,14 @@
     @if (session('success'))
         <div class="success-alert">{{ session('success') }}</div>
     @endif
+    @if (session('error'))
+        <div class="form-alert" role="alert">{{ session('error') }}</div>
+    @endif
 
     <section class="vendor-summary-grid">
         <article><small>Registered vendors</small><strong>{{ $vendors->total() }}</strong></article>
         <article><small>Active vendors</small><strong>{{ $vendors->where('status', 'Active')->count() }}</strong></article>
-        <article><small>Pending applications</small><strong>{{ $vendors->where('status', 'Pending')->count() }}</strong></article>
+        <article><small>Accounts awaiting approval</small><strong>{{ $pendingAccountApprovals }}</strong></article>
         <article><small>Monthly rent volume</small><strong>₱{{ number_format($vendors->sum('monthly_rent'), 2) }}</strong></article>
     </section>
 
@@ -52,7 +55,7 @@
     <section class="vendor-directory-card">
         <div class="vendor-directory-scroll">
             <table class="vendor-directory-table">
-                <thead><tr><th>Vendor</th><th>Contact</th><th>Stall</th><th>Section</th><th>Rate</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>Vendor</th><th>Contact</th><th>Stall</th><th>Section</th><th>Rate</th><th>Contract</th><th>Account access</th><th>Action</th></tr></thead>
                 <tbody>
                     @forelse ($vendors as $vendor)
                         <tr>
@@ -76,11 +79,40 @@
                             <td>{{ $vendor->monthly_rent ? '₱'.number_format((float) $vendor->monthly_rent, 2) : 'Not set' }}</td>
                             <td><span class="vendor-status-pill {{ $vendor->status === 'Active' ? 'active' : 'pending' }}">{{ $vendor->status }}</span></td>
                             <td>
-                                <a class="vendor-primary-action" href="{{ route('vendors.show', $vendor) }}">Manage account</a>
+                                @if ($vendor->user)
+                                    <form method="POST" action="{{ route('vendors.account-access', $vendor) }}" class="flex items-center gap-2">
+                                        @csrf @method('PATCH')
+                                        <select
+                                            id="vendor-access-{{ $vendor->id }}"
+                                            @class([
+                                                'rounded-md border px-2 py-1.5 text-xs font-semibold focus:ring-2',
+                                                'border-emerald-300 bg-emerald-50 text-emerald-800 focus:border-emerald-600 focus:ring-emerald-600/20' => $vendor->user->account_approved,
+                                                'border-rose-300 bg-rose-50 text-rose-800 focus:border-rose-600 focus:ring-rose-600/20' => ! $vendor->user->account_approved,
+                                            ])
+                                            name="account_approved"
+                                            onchange="this.form.submit()"
+                                            aria-label="Set account access for {{ $vendor->name }}"
+                                        >
+                                            <option value="1" @selected($vendor->user->account_approved)>Approved</option>
+                                            <option value="0" @selected(! $vendor->user->account_approved)>Not approved</option>
+                                        </select>
+                                    </form>
+                                @else
+                                    <span class="text-slate-400">No login</span>
+                                @endif
+                            </td>
+                            <td>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a class="vendor-primary-action" href="{{ route('vendors.show', $vendor) }}">Manage account</a>
+                                    <form method="POST" action="{{ route('vendors.destroy', $vendor) }}" data-confirm="Delete this vendor and their login? Payment history will be retained.">
+                                        @csrf @method('DELETE')
+                                        <button class="rounded border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7">No vendor records found.</td></tr>
+                        <tr><td colspan="8">No vendor records found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

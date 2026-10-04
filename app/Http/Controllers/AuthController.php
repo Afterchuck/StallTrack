@@ -37,6 +37,14 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        if ($request->user()->role === 'vendor' && ! $request->user()->account_approved) {
+            Auth::logout();
+
+            return back()->withErrors([
+                'email' => 'Your account is awaiting admin approval. You can log in after it has been approved.',
+            ])->onlyInput('email');
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended($request->user()->role === 'vendor'
@@ -70,6 +78,7 @@ class AuthController extends Controller
             'mobile_number' => '+63'.$validated['mobile_number'],
             'password' => Hash::make($validated['password']),
             'role' => 'vendor',
+            'account_approved' => false,
         ]);
 
         Vendor::create([
@@ -80,17 +89,31 @@ class AuthController extends Controller
             'status' => 'Pending',
         ]);
 
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()->route($user->role === 'vendor' ? 'vendor.dashboard' : 'dashboard');
+        return redirect()->route('login')->with('status', 'Your account was created and is awaiting admin approval. You can log in after it has been approved.');
     }
 
     public function dashboard(): View
     {
+        $vendors = Vendor::latest()->get();
+        $duePayments = Payment::where('status', 'Due')->whereNotNull('due_date');
+        $overdueFilter = fn ($query) => $query->where('status', 'Due')->whereDate('due_date', '<', today());
+
         return view('admin.dashboard', [
-            'vendors' => Vendor::latest()->get(),
-            'payments' => Payment::latest('paid_at')->take(4)->get(),
+            'vendors' => $vendors,
+            'upcomingPayments' => Payment::with('vendor')->where('status', 'Due')->whereDate('due_date', '>=', today())->orderBy('due_date')->take(6)->get(),
+            'overdueVendors' => Vendor::whereHas('payments', $overdueFilter)
+                ->withSum(['payments as overdue_balance' => $overdueFilter], 'amount')
+                ->withMin(['payments as oldest_overdue_date' => $overdueFilter], 'due_date')
+                ->orderByDesc('overdue_balance')
+                ->take(6)
+                ->get(),
+            'totalStalls' => Stall::count(),
+            'occupiedStalls' => Stall::where('status', 'Occupied')->count(),
+            'availableStalls' => Stall::where('status', 'Available')->count(),
+            'collectedThisMonth' => Payment::where('status', 'Paid')->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year)->sum('amount'),
+            'outstandingBalance' => (clone $duePayments)->sum('amount'),
+            'dueTodayCount' => (clone $duePayments)->whereDate('due_date', today())->count(),
+            'overduePaymentsCount' => (clone $duePayments)->whereDate('due_date', '<', today())->count(),
         ]);
     }
 
@@ -189,6 +212,27 @@ class AuthController extends Controller
             'vendor' => $vendor,
             'payments' => $vendor->payments()->latest('paid_at')->get(),
         ]);
+    }
+
+    public function setVendorAccountApproval(Request $request, Vendor $vendor): RedirectResponse
+    {
+        $user = $vendor->user;
+
+        if (! $user || $user->role !== 'vendor') {
+            return redirect()->route('vendors.index')->with('error', 'This vendor does not have a linked login account to update.');
+        }
+
+        $validated = $request->validate([
+            'account_approved' => ['required', 'boolean'],
+        ]);
+
+        $user->update(['account_approved' => $validated['account_approved']]);
+
+        $message = $user->account_approved
+            ? "Vendor account for {$vendor->name} approved. They can now log in."
+            : "Login access for {$vendor->name} has been withheld.";
+
+        return redirect()->route('vendors.index')->with('success', $message);
     }
 
     public function editVendor(Vendor $vendor): View
@@ -318,7 +362,7 @@ class AuthController extends Controller
 
     public function vendors(Request $request): View|JsonResponse
     {
-        $query = Vendor::latest();
+        $query = Vendor::with('user')->latest();
         $search = trim((string) $request->input('search', ''));
 
         if ($search !== '') {
@@ -361,6 +405,7 @@ class AuthController extends Controller
 
         return view('admin.vendors.index', [
             'vendors' => $vendors,
+            'pendingAccountApprovals' => User::where('role', 'vendor')->where('account_approved', false)->count(),
             'availableStalls' => Stall::where('status', 'Available')->orderBy('stall_number')->get(),
         ]);
     }
@@ -417,6 +462,18 @@ class AuthController extends Controller
         }
 
         return redirect()->route('stalls')->with('success', "Stall {$stall->stall_number} updated successfully.");
+    }
+
+    public function destroyStall(Stall $stall): RedirectResponse
+    {
+        if ($stall->rentals()->exists()) {
+            return redirect()->route('stalls')->with('error', 'This stall is linked to rental contracts. Remove or update those contracts before deleting the stall.');
+        }
+
+        $stallNumber = $stall->stall_number;
+        $stall->delete();
+
+        return redirect()->route('stalls')->with('success', "Stall {$stallNumber} deleted.");
     }
 
     public function rentals(): View
@@ -546,6 +603,18 @@ class AuthController extends Controller
         return redirect()->route('rentals')->with('success', "Rental contract {$rental->contract_number} updated successfully.");
     }
 
+    public function destroyRental(Rental $rental): RedirectResponse
+    {
+        if ($rental->status === 'Active') {
+            return redirect()->route('rentals')->with('error', 'Active rental contracts cannot be deleted. Change the contract status first.');
+        }
+
+        $contractNumber = $rental->contract_number;
+        $rental->delete();
+
+        return redirect()->route('rentals')->with('success', "Rental contract {$contractNumber} deleted.");
+    }
+
     public function storeVendor(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -599,7 +668,10 @@ class AuthController extends Controller
 
     public function payments(): View
     {
-        return view('admin.payments.index', ['payments' => Payment::latest('paid_at')->get(), 'active' => 'payments']);
+        return view('admin.payments.index', [
+            'payments' => Payment::with('vendor')->orderByRaw('COALESCE(due_date, paid_at) DESC')->get(),
+            'active' => 'payments',
+        ]);
     }
 
     public function createPayment(): View
@@ -610,27 +682,116 @@ class AuthController extends Controller
     public function storePayment(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'vendor_name' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'vendor_id' => ['required', 'exists:vendors,id'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'status' => ['required', 'in:Due,Paid'],
+            'due_date' => ['nullable', 'required_if:status,Due', 'date'],
+            'paid_at' => ['nullable', 'required_if:status,Paid', 'date'],
+            'receipt_number' => ['nullable', 'required_if:status,Paid', 'string', 'max:50', 'unique:payments,receipt_number'],
+        ]);
+
+        $vendor = Vendor::findOrFail($validated['vendor_id']);
+        $isPaid = $validated['status'] === 'Paid';
+        Payment::create([
+            'vendor_id' => $vendor->id,
+            'vendor_name' => $vendor->name,
+            'amount' => $validated['amount'],
+            'status' => $validated['status'],
+            'due_date' => $isPaid ? null : $validated['due_date'],
+            'paid_at' => $isPaid ? $validated['paid_at'] : null,
+            'receipt_number' => $isPaid ? $validated['receipt_number'] : null,
+        ]);
+
+        $this->notifyVendor(
+            $vendor,
+            $isPaid ? 'A payment was recorded' : 'A payment is due',
+            $isPaid
+                ? "Market Administration recorded receipt {$validated['receipt_number']} for your account."
+                : 'Market Administration added a payment of ₱'.number_format((float) $validated['amount'], 2).' due on '.date('M j, Y', strtotime($validated['due_date'])).'.',
+        );
+
+        return redirect()->route('payments')->with('success', $isPaid ? 'Payment recorded and receipt issued.' : 'Payment due date added and vendor notified.');
+    }
+
+    public function markPaymentAsPaid(Request $request, Payment $payment): RedirectResponse
+    {
+        $validated = $request->validate([
             'paid_at' => ['required', 'date'],
             'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        $vendor = Vendor::where('name', $validated['vendor_name'])->firstOrFail();
-        Payment::create([...$validated, 'vendor_id' => $vendor->id]);
-        $this->notifyVendor($vendor, 'A payment was recorded', 'Market Administration recorded a payment for your account.');
+        abort_if($payment->status === 'Paid', 409, 'This payment is already marked as paid.');
+        $vendor = $payment->vendor ?? Vendor::where('name', $payment->vendor_name)->first();
+        abort_unless($vendor, 404);
 
-        return redirect()->route('payments')->with('success', 'Payment recorded successfully.');
+        $payment->update([...$validated, 'status' => 'Paid']);
+        $this->notifyVendor($vendor, 'Payment received', "Your payment was confirmed. Receipt {$validated['receipt_number']} is ready in Payment History.");
+
+        return redirect()->route('payments')->with('success', 'Payment confirmed and receipt issued.');
+    }
+
+    public function destroyPayment(Payment $payment): RedirectResponse
+    {
+        $receiptNumber = $payment->receipt_number;
+        $payment->delete();
+
+        return redirect()->route('payments')->with('success', "Payment record {$receiptNumber} deleted.");
     }
 
     public function dueDates(): View
     {
-        return view('admin.section', ['title' => 'Due Dates', 'description' => 'Keep contracts and payment deadlines on schedule.', 'active' => 'due-dates']);
+        return view('admin.due-dates', [
+            'overduePayments' => Payment::with('vendor')->where('status', 'Due')->whereDate('due_date', '<', today())->orderBy('due_date')->get(),
+            'upcomingPayments' => Payment::with('vendor')->where('status', 'Due')->whereDate('due_date', '>=', today())->orderBy('due_date')->get(),
+            'expiringRentals' => Rental::with(['vendor', 'stall'])->where('status', 'Active')->whereBetween('end_date', [today(), today()->addDays(30)])->orderBy('end_date')->get(),
+        ]);
     }
 
-    public function reports(): View
+    public function reports(Request $request): View|\Symfony\Component\HttpFoundation\StreamedResponse
     {
-        return view('admin.section', ['title' => 'Reports', 'description' => 'Review registration, payment, and stall activity.', 'active' => 'reports']);
+        $vendors = Vendor::withCount('rentals')
+            ->withSum(['payments as collected_total' => fn ($query) => $query->where('status', 'Paid')], 'amount')
+            ->withSum(['payments as outstanding_total' => fn ($query) => $query->where('status', 'Due')], 'amount')
+            ->orderBy('name')
+            ->get();
+
+        if ($request->boolean('export')) {
+            return response()->streamDownload(function () use ($vendors): void {
+                $output = fopen('php://output', 'w');
+                fputcsv($output, ['Vendor', 'Email', 'Stall', 'Market section', 'Contract status', 'Billing cycle', 'Monthly rent', 'Contract start', 'Contract end', 'Active rentals', 'Collected', 'Outstanding']);
+
+                foreach ($vendors as $vendor) {
+                    fputcsv($output, [
+                        $vendor->name,
+                        $vendor->email,
+                        $vendor->stall_number,
+                        $vendor->market_section,
+                        $vendor->status,
+                        $vendor->billing_cycle,
+                        $vendor->monthly_rent,
+                        $vendor->contract_start_date?->toDateString(),
+                        $vendor->contract_end_date?->toDateString(),
+                        $vendor->rentals_count,
+                        $vendor->collected_total ?? 0,
+                        $vendor->outstanding_total ?? 0,
+                    ]);
+                }
+
+                fclose($output);
+            }, 'stalltrack-report-'.today()->format('Y-m-d').'.csv', [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
+        }
+
+        return view('admin.reports', [
+            'vendors' => $vendors,
+            'payments' => Payment::with('vendor')->latest('created_at')->take(12)->get(),
+            'totalCollected' => Payment::where('status', 'Paid')->sum('amount'),
+            'outstandingBalance' => Payment::where('status', 'Due')->sum('amount'),
+            'stallCounts' => Stall::query()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status'),
+            'vendorCount' => $vendors->count(),
+            'activeRentalCount' => Rental::where('status', 'Active')->count(),
+        ]);
     }
 
     public function logout(Request $request): RedirectResponse

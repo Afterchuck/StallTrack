@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\VendorSupportRequest;
+use App\Notifications\VendorMessageNotification;
 use App\Notifications\VendorUpdateNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,11 @@ class AdminSupportRequestController extends Controller
 
     public function show(VendorSupportRequest $supportRequest): View
     {
+        auth()->user()->unreadNotifications
+            ->where('type', VendorMessageNotification::class)
+            ->filter(fn ($notification): bool => (int) ($notification->data['support_request_id'] ?? 0) === $supportRequest->id)
+            ->each->markAsRead();
+
         return view('admin.support.show', [
             'supportRequest' => $supportRequest->load(['user', 'responder']),
         ]);
@@ -53,17 +59,30 @@ class AdminSupportRequestController extends Controller
 
         $supportRequest->update($updates);
 
-        if ($statusChanged || $responseChanged) {
-            $message = $responseChanged && $validated['admin_response']
-                ? 'Market Administration replied to your support request.'
-                : "Market Administration changed your support request status to {$supportRequest->status}.";
-
+        if ($responseChanged && $validated['admin_response']) {
+            $supportRequest->user->notify(new VendorUpdateNotification(
+                'New message from Market Administration',
+                'Market Administration replied to your support request. Open Help & Support to read the reply.',
+            ));
+        } elseif ($statusChanged) {
             $supportRequest->user->notify(new VendorUpdateNotification(
                 'Your support request was updated',
-                $message,
+                "Market Administration changed your support request status to {$supportRequest->status}.",
             ));
         }
 
-        return redirect()->route('admin.support.show', $supportRequest)->with('success', 'Support request updated.');
+        return redirect()->route('admin.support.show', $supportRequest)->with(
+            'success',
+            $responseChanged && $validated['admin_response']
+                ? 'Your message was sent and the vendor was notified.'
+                : 'Support request updated.',
+        );
+    }
+
+    public function destroy(VendorSupportRequest $supportRequest): RedirectResponse
+    {
+        $supportRequest->delete();
+
+        return redirect()->route('admin.support.index')->with('success', 'Support request deleted.');
     }
 }

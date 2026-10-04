@@ -58,6 +58,12 @@
                 <h1 class="mt-2 text-3xl font-semibold tracking-[-.04em] text-[#172b24] sm:text-[34px]">Sign in to your account</h1>
                 <p class="mt-2 text-sm leading-6 text-[#718078]">Enter your market account details to continue.</p>
 
+                @if (session('status'))
+                    <div class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
                 @if ($errors->any())
                     <div class="mt-6 flex gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">
                         <svg class="mt-0.5 size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

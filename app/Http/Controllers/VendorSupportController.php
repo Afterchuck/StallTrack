@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Notifications\VendorMessageNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -23,7 +25,11 @@ class VendorSupportController extends Controller
             'message' => ['required', 'string', 'min:10', 'max:5000'],
         ]);
 
-        $request->user()->supportRequests()->create($validated);
+        $supportRequest = $request->user()->supportRequests()->create($validated);
+
+        User::where('role', 'admin')->each(function (User $admin) use ($supportRequest): void {
+            $admin->notify(new VendorMessageNotification($supportRequest));
+        });
 
         return redirect()->route('vendor.support.index')->with('success', 'Your support request was sent to Market Administration.');
     }

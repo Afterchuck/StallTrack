@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminSupportRequestController;
+use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\VendorSupportController;
 use Illuminate\Support\Facades\Route;
@@ -28,12 +29,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/vendors/create', [AuthController::class, 'createVendor'])->name('vendors.create');
     Route::get('/vendors/{vendor}', [AuthController::class, 'showVendor'])->name('vendors.show');
     Route::get('/vendors/{vendor}/edit', [AuthController::class, 'editVendor'])->name('vendors.edit');
+    Route::patch('/vendors/{vendor}/account-access', [AuthController::class, 'setVendorAccountApproval'])->name('vendors.account-access');
     Route::get('/stalls', [AuthController::class, 'stalls'])->name('stalls');
     Route::post('/stalls', [AuthController::class, 'storeStall'])->name('stalls.store');
     Route::put('/stalls/{stall}', [AuthController::class, 'updateStall'])->name('stalls.update');
+    Route::delete('/stalls/{stall}', [AuthController::class, 'destroyStall'])->name('stalls.destroy');
     Route::get('/rentals', [AuthController::class, 'rentals'])->name('rentals');
     Route::post('/rentals', [AuthController::class, 'storeRental'])->name('rentals.store');
     Route::put('/rentals/{rental}', [AuthController::class, 'updateRental'])->name('rentals.update');
+    Route::delete('/rentals/{rental}', [AuthController::class, 'destroyRental'])->name('rentals.destroy');
     Route::post('/vendors', [AuthController::class, 'storeVendor'])->name('vendors.store');
     Route::put('/vendors/{vendor}', [AuthController::class, 'updateVendor'])->name('vendors.update');
     Route::delete('/vendors/{vendor}', [AuthController::class, 'destroyVendor'])->name('vendors.destroy');
@@ -42,11 +46,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/payments', [AuthController::class, 'payments'])->name('payments');
     Route::get('/payments/create', [AuthController::class, 'createPayment'])->name('payments.create');
     Route::post('/payments', [AuthController::class, 'storePayment'])->name('payments.store');
+    Route::patch('/payments/{payment}/paid', [AuthController::class, 'markPaymentAsPaid'])->name('payments.paid');
+    Route::delete('/payments/{payment}', [AuthController::class, 'destroyPayment'])->name('payments.destroy');
     Route::get('/due-dates', [AuthController::class, 'dueDates'])->name('due-dates');
     Route::get('/reports', [AuthController::class, 'reports'])->name('reports');
     Route::get('/support-requests', [AdminSupportRequestController::class, 'index'])->name('admin.support.index');
+    Route::get('/admin-notifications', [AdminNotificationController::class, 'index'])->name('admin.notifications');
     Route::get('/support-requests/{supportRequest}', [AdminSupportRequestController::class, 'show'])->name('admin.support.show');
     Route::patch('/support-requests/{supportRequest}', [AdminSupportRequestController::class, 'update'])->name('admin.support.update');
+    Route::delete('/support-requests/{supportRequest}', [AdminSupportRequestController::class, 'destroy'])->name('admin.support.destroy');
 });
 
 Route::middleware(['auth', 'role:vendor'])->group(function () {

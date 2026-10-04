@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
-    protected $fillable = ['vendor_id', 'vendor_name', 'amount', 'paid_at', 'receipt_number', 'status'];
+    protected $fillable = ['vendor_id', 'vendor_name', 'amount', 'due_date', 'paid_at', 'receipt_number', 'status'];
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'paid_at' => 'date'];
+        return ['amount' => 'decimal:2', 'due_date' => 'date', 'paid_at' => 'date'];
     }
 
     public function vendor(): BelongsTo

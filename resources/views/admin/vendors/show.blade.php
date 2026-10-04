@@ -27,7 +27,7 @@
 
             <section class="dashboard-panel">
                 <div class="panel-title"><div><h2>Payment history</h2><p>Payments below are visible in this vendor's Billing &amp; Payment History.</p></div></div>
-                <div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Receipt</th><th>Date</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>@forelse($payments as $payment)<tr><td>{{ $payment->receipt_number }}</td><td>{{ $payment->paid_at->format('M d, Y') }}</td><td>₱{{ number_format((float) $payment->amount, 2) }}</td><td><span class="table-status {{ $payment->status === 'Paid' ? 'upcoming' : 'pending' }}">{{ $payment->status }}</span></td><td>@if ($payment->status === 'Paid')<span class="text-sm font-semibold text-slate-500">Paid</span>@else<form method="POST" action="{{ route('vendors.payments.paid', [$vendor, $payment]) }}">@csrf @method('PATCH')<button class="black-button min-h-0 px-3 py-1.5" type="submit">Paid</button></form>@endif</td></tr>@empty<tr><td colspan="5">No payments have been recorded.</td></tr>@endforelse</tbody></table></div>
+                <div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Receipt</th><th>Date</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>@forelse($payments as $payment)<tr><td>{{ $payment->receipt_number }}</td><td>{{ $payment->paid_at->format('M d, Y') }}</td><td>₱{{ number_format((float) $payment->amount, 2) }}</td><td><span class="table-status {{ $payment->status === 'Paid' ? 'upcoming' : 'pending' }}">{{ $payment->status }}</span></td><td>@if ($payment->status === 'Paid')<span class="text-sm font-semibold text-slate-500">Paid</span>@else<form method="POST" action="{{ route('vendors.payments.paid', [$vendor, $payment]) }}">@csrf @method('PATCH')<button class="black-button min-h-0 px-3 py-1.5" type="submit">Paid</button></form>@endif<form class="inline" method="POST" action="{{ route('payments.destroy', $payment) }}" data-confirm="Delete this payment record? This cannot be undone.">@csrf @method('DELETE')<button class="rounded border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button></form></td></tr>@empty<tr><td colspan="5">No payments have been recorded.</td></tr>@endforelse</tbody></table></div>
             </section>
         </div>
 
@@ -46,7 +46,7 @@
             <section class="rounded-lg border border-rose-200 bg-rose-50 p-5">
                 <h2 class="m-0 text-base font-semibold text-rose-800">Delete vendor account</h2>
                 <p class="mt-2 text-sm text-rose-700">The vendor login and profile will be permanently deleted. Payment records remain for audit history.</p>
-                <form class="mt-4" method="POST" action="{{ route('vendors.destroy', $vendor) }}" onsubmit="return confirm('Delete this vendor account permanently?');">@csrf @method('DELETE')<button class="cursor-pointer rounded bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-800" type="submit">Delete vendor</button></form>
+                <form class="mt-4" method="POST" action="{{ route('vendors.destroy', $vendor) }}" data-confirm="Delete this vendor account permanently?">@csrf @method('DELETE')<button class="cursor-pointer rounded bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-800" type="submit">Delete vendor</button></form>
             </section>
         </aside>
     </div>

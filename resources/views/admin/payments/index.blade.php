@@ -20,7 +20,7 @@
                 <p>
                     This month: 
                     <strong>
-                        ₱{{ number_format($payments->isEmpty() ? 8400 : $payments->sum('amount'), 2) }}
+                        ₱{{ number_format($payments->filter(fn ($payment) => $payment->paid_at->isSameMonth(now()))->sum('amount'), 2) }}
                     </strong> 
                     collected
                 </p>
@@ -34,6 +34,9 @@
             <div class="success-alert">
                 {{ session('success') }}
             </div>
+        @endif
+        @if (session('error'))
+            <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">{{ session('error') }}</div>
         @endif
 
         <div class="payment-filters">
@@ -62,6 +65,7 @@
                         <th>
                             Receipt
                         </th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -79,85 +83,22 @@
                             <td>
                                 ▣ {{ $payment->receipt_number }}
                             </td>
+                            <td>
+                                <form method="POST" action="{{ route('payments.destroy', $payment) }}" data-confirm="Delete this payment record? This cannot be undone.">
+                                    @csrf @method('DELETE')
+                                    <button class="rounded border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td>
-                                Rosa Delacruz
-                            </td>
-                            <td>
-                                ₱1,200
-                            </td>
-                            <td>
-                                Aug 26, 2026
-                            </td>
-                            <td>
-                                ▣ OR-0062
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                Manuel Reyes
-                            </td>
-                            <td>
-                                ₱850
-                            </td>
-                            <td>
-                                Aug 25, 2026
-                            </td>
-                            <td>
-                                ▣ OR-0061
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                Ana Villareal
-                            </td>
-                            <td>
-                                ₱1,200
-                            </td>
-                            <td>
-                                Aug 24, 2026
-                            </td>
-                            <td>
-                                ▣ OR-0060
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                Juan Dela Cruz
-                            </td>
-                            <td>
-                                ₱500
-                            </td>
-                            <td>
-                                Aug 24, 2026
-                            </td>
-                            <td>
-                                ▣ OR-0059
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                Maria Santos
-                            </td>
-                            <td>
-                                ₱1,500
-                            </td>
-                            <td>
-                                Aug 23, 2026
-                            </td>
-                            <td>
-                                ▣ OR-0058
-                            </td>
-                        </tr>
+                        <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">No payment records have been added.</td></tr>
                     @endforelse
                 </tbody>
             </table>
             
             <div class="table-footer">
                 <span>
-                    Showing 1–{{ min($payments->count() ?: 5, 5) }} of {{ $payments->count() ?: 124 }} records
+                    {{ $payments->count() }} payment records
                 </span>
                 <div>
                     <button disabled>

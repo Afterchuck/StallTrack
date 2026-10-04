@@ -68,10 +68,7 @@
                     Cancel
                 </a>
                 <button class="black-button" type="submit">
-                    Save Payment 
-                    <span>
-                        →
-                    </span>
+                    Save Payment
                 </button>
             </div>
         </form>

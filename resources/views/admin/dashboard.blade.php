@@ -1,21 +1,10 @@
 <x-layouts.admin title="Dashboard" active="dashboard">
     @php
         $vendorCount = $vendors->count();
-        $occupied = $vendors->where('status', 'Active')->count();
-        $totalStalls = max(150, $vendorCount);
-        $available = max(0, $totalStalls - $occupied);
-        $monthlyRent = $vendors->sum(fn ($vendor) => (float) $vendor->monthly_rent);
-
-        $recentPayments = $payments->isNotEmpty() 
-            ? $payments 
-            : collect([
-                (object) ['vendor_name' => 'Elena Rostova', 'amount' => 3500, 'paid_at' => now()->addDays(2), 'receipt_number' => 'A-102'],
-                (object) ['vendor_name' => 'Marcus Chen', 'amount' => 4200, 'paid_at' => now()->addDays(3), 'receipt_number' => 'B-045'],
-                (object) ['vendor_name' => 'Teresa Alcantara', 'amount' => 3800, 'paid_at' => now()->addDays(4), 'receipt_number' => 'C-110'],
-                (object) ['vendor_name' => 'Danilo Santos', 'amount' => 5100, 'paid_at' => now()->addDays(5), 'receipt_number' => 'M-012'],
-            ]);
-
-        $overdueVendors = $vendors->where('status', 'Inactive')->take(4);
+        $occupied = $occupiedStalls;
+        $available = $availableStalls;
+        $monthlyRent = $collectedThisMonth;
+        $recentPayments = $upcomingPayments;
     @endphp
 
     <!-- Dashboard Heading -->
@@ -51,7 +40,7 @@
                 Total Vendors
             </small>
             <strong>
-                {{ $vendorCount ?: 128 }}
+                {{ $vendorCount }}
             </strong>
             <em>
                 Registered
@@ -73,7 +62,7 @@
                 Occupied Stalls
             </small>
             <strong>
-                {{ $occupied ?: 138 }}
+                {{ $occupied }}
             </strong>
             <em class="good">
                 92% Rate
@@ -84,7 +73,7 @@
                 Available Stalls
             </small>
             <strong class="good-number">
-                {{ $available ?: 12 }}
+                {{ $available }}
             </strong>
             <em class="good">
                 Ready to Lease
@@ -164,7 +153,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($recentPayments as $payment)
+                    @forelse ($recentPayments as $payment)
                         <tr>
                             <td>
                                 <strong>
@@ -191,12 +180,15 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('payments.create') }}">
-                                    Record Payment
-                                </a>
+                                <form method="POST" action="{{ route('payments.destroy', $payment) }}" data-confirm="Delete this payment record? This cannot be undone.">
+                                    @csrf @method('DELETE')
+                                    <button class="rounded border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button>
+                                </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr><td colspan="6" class="py-8 text-center text-sm text-slate-500">No payment records have been added.</td></tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -207,8 +199,8 @@
         <div class="panel-title">
             <div>
                 <h2>
-                    Overdue Vendors 
-                    <span>14 Accounts</span>
+                    Overdue Vendors
+                    <span>{{ $overdueVendors->count() }} Accounts</span>
                 </h2>
             </div>
             <p>
@@ -253,59 +245,24 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="#">
-                                    Send Notice
-                                </a>
-                                <a href="#">
-                                    View Account
-                                </a>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <a href="{{ route('vendors.show', $vendor) }}">View Account</a>
+                                    <form method="POST" action="{{ route('vendors.destroy', $vendor) }}" data-confirm="Delete this vendor account? Payment history will be retained.">
+                                        @csrf @method('DELETE')
+                                        <button class="rounded border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" type="submit">Delete</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        @foreach (['Jorge Pulumbari', 'John Doe', 'Marni Juperio', 'Juan Dela Cruz'] as $name)
-                            <tr>
-                                <td>
-                                    <strong>
-                                        {{ $name }}
-                                    </strong>
-                                    <small>
-                                        tenant@stalltrack.com
-                                    </small>
-                                </td>
-                                <td>
-                                    111{{ 5 - $loop->index }}
-                                </td>
-                                <td class="amount-overdue">
-                                    ₱{{ number_format(7200 - ($loop->index * 1600), 2) }}
-                                </td>
-                                <td class="delay">
-                                    {{ 28 - ($loop->index * 7) }} Days
-                                </td>
-                                <td>
-                                    <span class="table-status overdue">
-                                        Overdue
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="#">
-                                        Send Notice
-                                    </a>
-                                    <a href="#">
-                                        View Account
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
+                        <tr><td colspan="6" class="py-8 text-center text-sm text-slate-500">No overdue vendors found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         <div class="table-pagination">
             <span>
-                Showing <strong>1-4</strong> of <strong>14</strong> overdue vendors
-            </span>
-            <span>
-                ‹ <b>1</b> 2 3 … 5 ›
+                Showing <strong>{{ $overdueVendors->count() }}</strong> overdue vendors
             </span>
         </div>
     </section>
