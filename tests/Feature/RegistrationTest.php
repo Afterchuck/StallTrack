@@ -17,13 +17,13 @@ class RegistrationTest extends TestCase
         $this->actingAs($vendor)->get(route('dashboard'))->assertForbidden();
     }
 
-    public function test_public_registration_creates_a_vendor_account_and_redirects_to_the_vendor_dashboard(): void
+    public function test_public_registration_creates_a_vendor_account_and_redirects_to_login_pending_approval(): void
     {
         $response = $this->post(route('register.store'), $this->registrationData());
 
-        $response->assertRedirect(route('vendor.dashboard'));
-        $response->assertSessionHasNoErrors();
-        $this->assertAuthenticated();
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status', 'Your account has been created and is awaiting admin approval.');
+        $this->assertGuest();
         $this->assertDatabaseHas('users', [
             'name' => 'Maria Clara Del Rosario',
             'email' => 'admin@example.com',
@@ -32,16 +32,16 @@ class RegistrationTest extends TestCase
         ]);
     }
 
-    public function test_vendor_registration_creates_a_vendor_account_and_redirects_to_the_vendor_dashboard(): void
+    public function test_vendor_registration_cannot_claim_an_admin_role_and_redirects_to_login_pending_approval(): void
     {
         $response = $this->post(route('register.store'), $this->registrationData([
             'email' => 'vendor@example.com',
             'role' => 'admin',
         ]));
 
-        $response->assertRedirect(route('vendor.dashboard'));
+        $response->assertRedirect(route('login'));
         $response->assertSessionHasNoErrors();
-        $this->assertAuthenticated();
+        $this->assertGuest();
         $this->assertDatabaseHas('users', ['email' => 'vendor@example.com', 'role' => 'vendor']);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Vendor;
+use App\Notifications\SupportRequestSubmitted;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        View::composer('components.layouts.admin', function (\Illuminate\View\View $view): void {
+            $view->with('unreadSupportCount', auth()->user()?->unreadNotifications()->where('type', SupportRequestSubmitted::class)->count() ?? 0);
+        });
         RateLimiter::for('login', function (Request $request): array {
             $email = is_string($request->input('email')) ? mb_strtolower(trim($request->input('email'))) : '';
 

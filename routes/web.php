@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\AdminSupportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\RentalBillingController;
 use App\Http\Controllers\VendorNotificationController;
+use App\Http\Controllers\VendorSupportController;
+use App\Http\Middleware\EnsureVendorApproved;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,6 +27,10 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/admin-notifications', [AdminSupportController::class, 'index'])->name('admin.notifications');
+    Route::post('/admin-notifications/{notification}/read', [AdminSupportController::class, 'read'])->name('admin.notifications.read');
+    Route::get('/support-requests/{supportRequest}', [AdminSupportController::class, 'show'])->name('admin.support.show');
+    Route::patch('/support-requests/{supportRequest}', [AdminSupportController::class, 'update'])->name('admin.support.update');
     Route::get('/announcements', [AuthController::class, 'announcements'])->name('announcements');
     Route::post('/announcements', [AuthController::class, 'storeAnnouncement'])->name('announcements.store');
     Route::get('/announcements/{announcement}/edit', [AuthController::class, 'editAnnouncement'])->name('announcements.edit');
@@ -34,12 +41,16 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/vendors/create', [AuthController::class, 'createVendor'])->name('vendors.create');
     Route::get('/vendors/{vendor}', [AuthController::class, 'showVendor'])->name('vendors.show');
     Route::get('/vendors/{vendor}/edit', [AuthController::class, 'editVendor'])->name('vendors.edit');
+    Route::patch('/vendors/{vendor}/approval', [AuthController::class, 'updateVendorApproval'])->name('vendors.approval.update');
     Route::get('/stalls', [AuthController::class, 'stalls'])->name('stalls');
+    Route::get('/stalls/{stall}', [AuthController::class, 'showStall'])->name('stalls.show');
     Route::post('/stalls', [AuthController::class, 'storeStall'])->name('stalls.store');
     Route::put('/stalls/{stall}', [AuthController::class, 'updateStall'])->name('stalls.update');
+    Route::delete('/stalls/{stall}', [AuthController::class, 'destroyStall'])->name('stalls.destroy');
     Route::get('/rentals', [AuthController::class, 'rentals'])->name('rentals');
     Route::post('/rentals', [AuthController::class, 'storeRental'])->name('rentals.store');
     Route::put('/rentals/{rental}', [AuthController::class, 'updateRental'])->name('rentals.update');
+    Route::delete('/rentals/{rental}', [AuthController::class, 'destroyRental'])->name('rentals.destroy');
     Route::post('/vendors', [AuthController::class, 'storeVendor'])->name('vendors.store');
     Route::put('/vendors/{vendor}', [AuthController::class, 'updateVendor'])->name('vendors.update');
     Route::delete('/vendors/{vendor}', [AuthController::class, 'destroyVendor'])->name('vendors.destroy');
@@ -61,10 +72,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/reports', [AuthController::class, 'reports'])->name('reports');
 });
 
-Route::middleware(['auth', 'role:vendor'])->group(function () {
+Route::middleware(['auth', 'role:vendor', EnsureVendorApproved::class])->group(function () {
     Route::get('/vendor-dashboard', [AuthController::class, 'vendorDashboard'])->name('vendor.dashboard');
     Route::get('/my-stall', [AuthController::class, 'vendorStall'])->name('vendor.stall');
     Route::get('/vendor-payments', [AuthController::class, 'vendorPayments'])->name('vendor.payments');
+    Route::get('/vendor-support', [VendorSupportController::class, 'index'])->name('vendor.support');
+    Route::post('/vendor-support', [VendorSupportController::class, 'store'])->name('vendor.support.store');
     Route::get('/vendor-notifications', [VendorNotificationController::class, 'index'])->name('vendor.notifications');
     Route::post('/vendor-notifications/{notification}/read', [VendorNotificationController::class, 'read'])->name('vendor.notifications.read');
     Route::get('/vendor-bills/{bill}', [VendorNotificationController::class, 'showBill'])->name('vendor.bills.show');

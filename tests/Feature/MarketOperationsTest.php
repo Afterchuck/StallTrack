@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Bill;
 use App\Models\Rental;
 use App\Models\Stall;
 use App\Models\User;
@@ -45,6 +46,75 @@ class MarketOperationsTest extends TestCase
         $this->actingAs($admin)->get(route('rentals'))
             ->assertViewHas('availableStalls', fn ($stalls): bool => $stalls->isEmpty())
             ->assertViewHas('vendors', fn ($vendors): bool => $vendors->isEmpty());
+    }
+
+    public function test_admin_creates_a_stall_with_monthly_rate_calculated_from_area_and_sqm_rate(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->post(route('stalls.store'), [
+            'stall_number' => 'F-10',
+            'market_section' => 'Food Court',
+            'length_m' => '3.00',
+            'width_m' => '2.50',
+            'rate_per_sqm' => '125.00',
+            'monthly_rate' => '1.00',
+            'status' => 'Available',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('stalls'));
+
+        $this->assertDatabaseHas('stalls', [
+            'stall_number' => 'F-10',
+            'length_m' => '3.00',
+            'width_m' => '2.50',
+            'rate_per_sqm' => '125.00',
+            'dimensions' => '3.00m x 2.50m',
+            'monthly_rate' => '937.50',
+        ]);
+    }
+
+    public function test_admin_updates_a_stall_and_recalculates_monthly_rate(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $stall = Stall::create([
+            'stall_number' => 'F-11',
+            'market_section' => 'Food Court',
+            'status' => 'Available',
+            'length_m' => 2,
+            'width_m' => 2,
+            'rate_per_sqm' => 100,
+            'monthly_rate' => 400,
+        ]);
+
+        $this->actingAs($admin)->put(route('stalls.update', $stall), [
+            'stall_number' => 'F-11',
+            'market_section' => 'Food Court',
+            'length_m' => '2.50',
+            'width_m' => '4.00',
+            'rate_per_sqm' => '200.00',
+            'status' => 'Available',
+        ])->assertRedirect(route('stalls'));
+
+        $this->assertDatabaseHas('stalls', [
+            'id' => $stall->id,
+            'dimensions' => '2.50m x 4.00m',
+            'monthly_rate' => '2000.00',
+        ]);
+    }
+
+    public function test_admin_cannot_save_a_stall_when_the_calculated_rate_exceeds_the_supported_amount(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->from(route('stalls'))->post(route('stalls.store'), [
+            'stall_number' => 'F-12',
+            'market_section' => 'Food Court',
+            'length_m' => '999999.99',
+            'width_m' => '999999.99',
+            'rate_per_sqm' => '99999999.99',
+            'status' => 'Available',
+        ])->assertSessionHasErrors('rate_per_sqm');
+
+        $this->assertDatabaseMissing('stalls', ['stall_number' => 'F-12']);
     }
 
     public function test_rental_modal_reopens_with_values_after_validation_failure(): void
@@ -145,6 +215,92 @@ class MarketOperationsTest extends TestCase
         $this->assertDatabaseHas('vendors', ['id' => $vendor->id, 'status' => 'Inactive', 'stall_number' => null]);
     }
 
+    public function test_admin_can_delete_a_stall_without_rental_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $stall = Stall::create(['stall_number' => 'D-01', 'market_section' => 'Dry Goods', 'status' => 'Available']);
+
+        $this->actingAs($admin)->delete(route('stalls.destroy', $stall))
+            ->assertRedirect(route('stalls'))
+            ->assertSessionHas('success', 'Stall D-01 deleted successfully.');
+
+        $this->assertDatabaseMissing('stalls', ['id' => $stall->id]);
+    }
+
+    public function test_admin_cannot_delete_a_stall_with_rental_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendor = Vendor::create(['name' => 'History Vendor', 'status' => 'Inactive']);
+        $stall = Stall::create(['stall_number' => 'D-02', 'market_section' => 'Dry Goods', 'status' => 'Available']);
+        Rental::create([
+            'vendor_id' => $vendor->id,
+            'stall_id' => $stall->id,
+            'contract_number' => 'CTR-D02',
+            'start_date' => today()->subYear(),
+            'end_date' => today()->subDay(),
+            'rent_amount' => 1000,
+            'billing_cycle' => 'Monthly',
+            'status' => 'Expired',
+        ]);
+
+        $this->followingRedirects()->actingAs($admin)->from(route('stalls'))
+            ->delete(route('stalls.destroy', $stall))
+            ->assertSee('This stall has rental history and cannot be deleted. Set it to inactive instead.');
+
+        $this->assertModelExists($stall);
+    }
+
+    public function test_deleting_an_active_rental_releases_the_stall_and_clears_vendor_assignment(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendor = Vendor::create(['name' => 'Active Vendor', 'stall_number' => 'D-03', 'status' => 'Active']);
+        $stall = Stall::create(['stall_number' => 'D-03', 'market_section' => 'Dry Goods', 'status' => 'Occupied']);
+        $rental = Rental::create([
+            'vendor_id' => $vendor->id,
+            'stall_id' => $stall->id,
+            'contract_number' => 'CTR-D03',
+            'start_date' => today(),
+            'end_date' => today()->addYear(),
+            'rent_amount' => 1000,
+            'billing_cycle' => 'Monthly',
+            'status' => 'Active',
+        ]);
+
+        $this->actingAs($admin)->delete(route('rentals.destroy', $rental))
+            ->assertRedirect(route('rentals'))
+            ->assertSessionHas('success', 'Rental contract CTR-D03 deleted successfully.');
+
+        $this->assertDatabaseMissing('rentals', ['id' => $rental->id]);
+        $this->assertDatabaseHas('stalls', ['id' => $stall->id, 'status' => 'Available']);
+        $this->assertDatabaseHas('vendors', ['id' => $vendor->id, 'status' => 'Inactive', 'stall_number' => null]);
+    }
+
+    public function test_admin_cannot_delete_a_rental_with_billing_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendor = Vendor::create(['name' => 'Billed Vendor', 'status' => 'Active']);
+        $stall = Stall::create(['stall_number' => 'D-04', 'market_section' => 'Dry Goods', 'status' => 'Occupied']);
+        $rental = Rental::create([
+            'vendor_id' => $vendor->id,
+            'stall_id' => $stall->id,
+            'contract_number' => 'CTR-D04',
+            'start_date' => today(),
+            'end_date' => today()->addYear(),
+            'rent_amount' => 1000,
+            'billing_cycle' => 'Monthly',
+            'status' => 'Active',
+        ]);
+        Bill::factory()->for($vendor)->create(['rental_id' => $rental->id]);
+
+        $this->actingAs($admin)->from(route('rentals'))->delete(route('rentals.destroy', $rental))
+            ->assertSessionHas('error', 'This rental has billing history and cannot be deleted. Update its status to Terminated instead.');
+
+        $this->assertModelExists($rental);
+        $this->assertDatabaseHas('stalls', ['id' => $stall->id, 'status' => 'Occupied']);
+        $this->get(route('rentals'))
+            ->assertSee('This rental has billing history and cannot be deleted. Update its status to Terminated instead.');
+    }
+
     public function test_admin_can_view_due_dates_and_reports_workspaces(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
@@ -177,7 +333,15 @@ class MarketOperationsTest extends TestCase
 
         $response->assertRedirect(route('vendors.index'));
         $vendor = Vendor::where('email', 'new-vendor@example.com')->firstOrFail();
+        $this->assertDatabaseHas('vendors', [
+            'id' => $vendor->id,
+            'name' => 'New Vendor',
+            'stall_number' => 'C-01',
+            'monthly_rent' => 3500,
+            'status' => 'Active',
+        ]);
         $this->assertDatabaseHas('rentals', ['vendor_id' => $vendor->id, 'status' => 'Active']);
+        $this->assertDatabaseHas('stalls', ['stall_number' => 'C-01', 'status' => 'Occupied']);
         $this->assertDatabaseHas('activity_logs', ['action' => 'created', 'subject_id' => $vendor->id]);
     }
 }

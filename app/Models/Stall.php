@@ -10,11 +10,27 @@ class Stall extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['stall_number', 'market_section', 'location', 'stall_type', 'dimensions', 'monthly_rate', 'status'];
+    protected $fillable = [
+        'stall_number',
+        'market_section',
+        'location',
+        'stall_type',
+        'dimensions',
+        'length_m',
+        'width_m',
+        'rate_per_sqm',
+        'monthly_rate',
+        'status',
+    ];
 
     protected function casts(): array
     {
-        return ['monthly_rate' => 'decimal:2'];
+        return [
+            'length_m' => 'decimal:2',
+            'width_m' => 'decimal:2',
+            'rate_per_sqm' => 'decimal:2',
+            'monthly_rate' => 'decimal:2',
+        ];
     }
 
     public function rentals(): HasMany

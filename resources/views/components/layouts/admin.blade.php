@@ -22,7 +22,10 @@
             <a @class(['rounded-md px-4 py-2.5 text-sm font-medium text-slate-300 no-underline transition hover:bg-white/10 hover:text-white', 'bg-[#087e69] text-white' => ($active ?? '') === 'announcements']) href="{{ route('announcements') }}">Announcements</a>
         </nav>
 
-        <details class="relative ml-auto">
+        <a href="{{ route('admin.notifications') }}" class="ml-auto flex items-center gap-2 rounded-md px-3 py-2 text-sm text-white hover:bg-white/10" aria-label="Notifications, {{ $unreadSupportCount }} unread">
+            Notifications <span class="rounded-full bg-[#087e69] px-2 py-0.5">{{ $unreadSupportCount }}</span>
+        </a>
+        <details class="relative">
             <summary class="flex cursor-pointer list-none items-center gap-2">
                 <div class="min-w-0 max-w-28 text-right sm:max-w-48">
                     <strong class="block truncate text-xs">{{ auth()->user()->name ?? 'Eleanor Vance' }}</strong>

@@ -23,7 +23,7 @@ class Vendor extends Model
     }
 
     protected $fillable = [
-        'user_id', 'name', 'stall_number', 'contract_until', 'status', 'contact_number',
+        'user_id', 'name', 'stall_number', 'contract_until', 'status', 'approval_status', 'contact_number',
         'email', 'residential_address', 'photo_path', 'market_section',
         'monthly_rent', 'billing_cycle', 'contract_start_date', 'contract_end_date',
     ];
@@ -51,5 +51,10 @@ class Vendor extends Model
     public function rentals(): HasMany
     {
         return $this->hasMany(Rental::class);
+    }
+
+    public function supportRequests(): HasMany
+    {
+        return $this->hasMany(SupportRequest::class);
     }
 }

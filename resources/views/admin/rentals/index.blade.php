@@ -14,6 +14,12 @@
     @if (session('success'))
         <div class="success-alert">{{ session('success') }}</div>
     @endif
+    @if (session('error'))
+        <div class="form-alert" role="alert">{{ session('error') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="form-alert" role="alert">{{ $errors->first() }}</div>
+    @endif
 
     <section class="vendor-summary-grid">
         <article><small>Total contracts</small><strong>{{ $rentalCounts->total }}</strong></article>
@@ -109,6 +115,19 @@
                                         onclick='openEditRentalModal(@json($rental))'>
                                         <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                     </button>
+                                    @if ($rental->bills_count === 0)
+                                        <form method="POST" action="{{ route('rentals.destroy', $rental) }}" onsubmit="return confirm('Delete this rental contract? This action cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="inline-flex size-7 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50" aria-label="Delete rental {{ $rental->contract_number }}" title="Delete rental">
+                                                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <button type="button" disabled class="inline-flex size-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete rental {{ $rental->contract_number }} because it has billing history" title="Rentals with billing history cannot be deleted">
+                                            <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

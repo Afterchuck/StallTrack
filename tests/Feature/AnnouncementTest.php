@@ -48,6 +48,7 @@ class AnnouncementTest extends TestCase
         $this->actingAs($vendor)->get(route('vendor.dashboard'))->assertOk()
             ->assertSeeInOrder(['Important notice', 'Recent notice'])
             ->assertDontSee('Private draft')->assertDontSee('Expired notice')->assertDontSee('Future notice')
+            ->assertDontSee('Market support')
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('<script>alert(1)</script>', false);
     }

@@ -42,9 +42,21 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        $user = $request->user();
+
+        if ($user->role === 'vendor' && $user->vendor?->approval_status !== 'Approved') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Your vendor account has not been approved yet.',
+            ])->onlyInput('email');
+        }
+
         $request->session()->regenerate();
 
-        return redirect()->intended($request->user()->role === 'vendor'
+        return redirect()->intended($user->role === 'vendor'
             ? route('vendor.dashboard')
             : route('dashboard'));
     }
@@ -92,15 +104,13 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'contact_number' => $user->mobile_number,
                 'status' => 'Pending',
+                'approval_status' => 'Pending',
             ]);
 
             return $user;
         });
 
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()->route($user->role === 'vendor' ? 'vendor.dashboard' : 'dashboard');
+        return redirect()->route('login')->with('status', 'Your account has been created and is awaiting admin approval.');
     }
 
     public function dashboard(Request $request): View
@@ -247,6 +257,16 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showStall(Stall $stall): View
+    {
+        $stall->load(['rentals' => fn ($query) => $query->active()->with('vendor')]);
+
+        return view('admin.stalls.show', [
+            'stall' => $stall,
+            'rental' => $stall->rentals->first(),
+        ]);
+    }
+
     public function editVendor(Vendor $vendor): View
     {
         $stalls = Stall::where('status', 'Available')
@@ -335,24 +355,52 @@ class AuthController extends Controller
         return redirect()->route('vendors.show', $vendor)->with('success', 'Vendor details and linked payment records updated.');
     }
 
-    public function destroyVendor(Vendor $vendor): RedirectResponse
+    public function updateVendorApproval(Request $request, Vendor $vendor): RedirectResponse
     {
-        if ($vendor->bills()->exists()) {
-            return back()->withErrors(['vendor' => 'This vendor has billing history and cannot be deleted. Set the vendor to inactive instead.']);
+        $validated = $request->validate([
+            'approval_status' => ['required', 'in:Pending,Approved,Not approved'],
+        ]);
+
+        if ($vendor->user_id === null || $vendor->user?->role !== 'vendor') {
+            throw ValidationException::withMessages([
+                'approval_status' => 'This vendor does not have a registered vendor account.',
+            ]);
         }
 
+        $vendor->update(['approval_status' => $validated['approval_status']]);
+        $this->recordActivity('updated', $vendor, "Changed {$vendor->name}'s account approval to {$validated['approval_status']}.");
+
+        return redirect()->route('vendors.index')
+            ->with('success', "{$vendor->name}'s account status is now {$validated['approval_status']}.");
+    }
+
+    public function destroyVendor(Vendor $vendor): RedirectResponse
+    {
+        $vendorName = $vendor->name;
+        $vendorId = $vendor->id;
         DB::transaction(function () use ($vendor): void {
-            if ($vendor->stall_number) {
-                Stall::where('stall_number', $vendor->stall_number)->update(['status' => 'Available']);
-                Rental::where('vendor_id', $vendor->id)->update(['status' => 'Terminated']);
+            $vendor = Vendor::query()->lockForUpdate()->findOrFail($vendor->id);
+
+            if ($vendor->bills()->exists() || $vendor->payments()->exists() || $vendor->rentals()->exists()) {
+                throw ValidationException::withMessages([
+                    'vendor' => 'This vendor has rental or payment history and cannot be deleted. Set the vendor to inactive instead.',
+                ]);
             }
+
+            if ($vendor->stall_number !== null) {
+                $stall = Stall::query()->where('stall_number', $vendor->stall_number)->lockForUpdate()->first();
+                if ($stall !== null && ! Rental::query()->active()->where('stall_id', $stall->id)->exists()) {
+                    $stall->update(['status' => 'Available']);
+                }
+            }
+
             $vendor->user()->where('role', 'vendor')->delete();
             $vendor->delete();
         });
 
-        $this->recordActivity('deleted', null, "Deleted vendor {$vendor->name}.", ['vendor_id' => $vendor->id]);
+        $this->recordActivity('deleted', null, "Deleted vendor {$vendorName}.", ['vendor_id' => $vendorId]);
 
-        return redirect()->route('vendors.index')->with('success', 'Vendor account deleted. Payment records were retained for audit history.');
+        return redirect()->route('vendors.index')->with('success', 'Vendor account deleted.');
     }
 
     public function storeVendorPaymentForAdmin(Request $request, Vendor $vendor): RedirectResponse
@@ -393,7 +441,7 @@ class AuthController extends Controller
             'stall_type' => ['nullable', 'string', 'max:100'],
             'contract_status' => ['nullable', 'in:Active,Pending,Inactive'],
         ]);
-        $query = Vendor::latest()->latest('id');
+        $query = Vendor::with('user')->latest()->latest('id');
         $search = trim((string) $request->input('search', ''));
 
         if ($search !== '') {
@@ -425,6 +473,7 @@ class AuthController extends Controller
                     'stall_number' => $vendor->stall_number,
                     'monthly_rent' => number_format((float) ($vendor->monthly_rent ?: 3500), 0),
                     'status' => $vendor->status === 'Active' ? 'Active' : 'Pending Review',
+                    'approval_status' => $vendor->approval_status,
                 ])->values(),
                 'current_page' => $vendors->currentPage(),
                 'last_page' => $vendors->lastPage(),
@@ -435,7 +484,8 @@ class AuthController extends Controller
         }
 
         return view('admin.vendors.index', [
-            'vendors' => $vendors,
+            'vendors' => $vendors->loadCount(['bills', 'payments', 'rentals']),
+            'pendingApplications' => Vendor::where('approval_status', 'Pending')->count(),
             'sections' => Vendor::whereNotNull('market_section')->distinct()->orderBy('market_section')->pluck('market_section'),
             'availableStalls' => Stall::where('status', 'Available')->orderBy('stall_number')->get(),
         ]);
@@ -449,6 +499,7 @@ class AuthController extends Controller
             'section' => ['nullable', 'string', 'max:100'],
         ]);
         $query = Stall::with(['rentals' => fn ($rentalQuery) => $rentalQuery->active()->with('vendor')])
+            ->withCount('rentals')
             ->orderBy('stall_number');
 
         if ($request->filled('search')) {
@@ -486,11 +537,13 @@ class AuthController extends Controller
             'market_section' => ['required', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:255'],
             'stall_type' => ['nullable', 'string', 'max:50'],
-            'dimensions' => ['nullable', 'string', 'max:50'],
-            'monthly_rate' => ['required', 'numeric', 'min:0'],
+            'length_m' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'width_m' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'rate_per_sqm' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'status' => ['required', 'in:Available,Occupied,Inactive'],
         ]);
 
+        $validated = $this->calculateStallRate($validated);
         Stall::create($validated);
         $stall = Stall::where('stall_number', $validated['stall_number'])->firstOrFail();
         $this->recordActivity('created', $stall, "Created stall {$stall->stall_number}.");
@@ -505,15 +558,59 @@ class AuthController extends Controller
             'market_section' => ['required', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:255'],
             'stall_type' => ['nullable', 'string', 'max:50'],
-            'dimensions' => ['nullable', 'string', 'max:50'],
-            'monthly_rate' => ['required', 'numeric', 'min:0'],
+            'length_m' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'width_m' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'rate_per_sqm' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'status' => ['required', 'in:Available,Occupied,Inactive'],
         ]);
 
+        $validated = $this->calculateStallRate($validated);
         $stall->update($validated);
         $this->recordActivity('updated', $stall, "Updated stall {$stall->stall_number}.");
 
         return redirect()->route('stalls')->with('success', "Stall {$stall->stall_number} updated successfully.");
+    }
+
+    public function destroyStall(Stall $stall): RedirectResponse
+    {
+        $stallNumber = $stall->stall_number;
+        $stallId = $stall->id;
+        DB::transaction(function () use ($stall): void {
+            $stall = Stall::query()->lockForUpdate()->findOrFail($stall->id);
+            if ($stall->rentals()->exists()) {
+                throw ValidationException::withMessages([
+                    'stall' => 'This stall has rental history and cannot be deleted. Set it to inactive instead.',
+                ]);
+            }
+
+            $stall->delete();
+        });
+        $this->recordActivity('deleted', null, "Deleted stall {$stallNumber}.", ['stall_id' => $stallId]);
+
+        return redirect()->route('stalls')->with('success', "Stall {$stallNumber} deleted successfully.");
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function calculateStallRate(array $validated): array
+    {
+        $monthlyRate = round(
+            (float) $validated['length_m'] * (float) $validated['width_m'] * (float) $validated['rate_per_sqm'],
+            2
+        );
+
+        if ($monthlyRate > 99999999.99) {
+            throw ValidationException::withMessages([
+                'rate_per_sqm' => 'The calculated monthly rate cannot exceed ₱99,999,999.99.',
+            ]);
+        }
+
+        $validated['dimensions'] = $validated['length_m'].'m x '.$validated['width_m'].'m';
+        $validated['monthly_rate'] = $monthlyRate;
+
+        return $validated;
     }
 
     public function rentals(Request $request): View
@@ -523,7 +620,7 @@ class AuthController extends Controller
             'status' => ['nullable', 'in:Active,Pending,Expired,Terminated,Inactive'],
             'cycle' => ['nullable', 'in:Monthly,Quarterly,Weekly,Bi-weekly'],
         ]);
-        $query = Rental::with(['vendor', 'stall'])->latest('start_date')->latest('id')
+        $query = Rental::with(['vendor', 'stall'])->withCount('bills')->latest('start_date')->latest('id')
             ->when($request->filled('cycle'), fn ($rentals) => $rentals->where('billing_cycle', $request->input('cycle')));
 
         if ($request->filled('search')) {
@@ -648,6 +745,43 @@ class AuthController extends Controller
         $this->recordActivity('updated', $rental, "Updated rental contract {$rental->contract_number}.");
 
         return redirect()->route('rentals')->with('success', "Rental contract {$rental->contract_number} updated successfully.");
+    }
+
+    public function destroyRental(Rental $rental): RedirectResponse
+    {
+        $contractNumber = $rental->contract_number;
+        $rentalId = $rental->id;
+
+        $deleted = DB::transaction(function () use ($rental): bool {
+            $rental = Rental::query()->lockForUpdate()->findOrFail($rental->id);
+            $stall = Stall::query()->lockForUpdate()->findOrFail($rental->stall_id);
+            $vendor = Vendor::query()->lockForUpdate()->findOrFail($rental->vendor_id);
+            $wasActive = $rental->status === 'Active';
+
+            if ($rental->bills()->exists()) {
+                return false;
+            }
+
+            $rental->delete();
+
+            if ($wasActive) {
+                if (! Rental::query()->active()->where('stall_id', $stall->id)->exists()) {
+                    $stall->update(['status' => 'Available']);
+                }
+
+                $this->clearVendorAssignmentIfUnoccupied($vendor);
+            }
+
+            return true;
+        });
+
+        if (! $deleted) {
+            return back()->with('error', 'This rental has billing history and cannot be deleted. Update its status to Terminated instead.');
+        }
+
+        $this->recordActivity('deleted', null, "Deleted rental contract {$contractNumber}.", ['rental_id' => $rentalId]);
+
+        return redirect()->route('rentals')->with('success', "Rental contract {$contractNumber} deleted successfully.");
     }
 
     public function storeVendor(Request $request): RedirectResponse

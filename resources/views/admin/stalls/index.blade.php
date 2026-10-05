@@ -14,6 +14,9 @@
     @if (session('success'))
         <div class="success-alert">{{ session('success') }}</div>
     @endif
+    @if ($errors->any())
+        <div class="form-alert" role="alert">{{ $errors->first() }}</div>
+    @endif
 
     <section class="vendor-summary-grid">
         <article><small>Total stalls</small><strong>{{ $stallCounts->total }}</strong></article>
@@ -63,12 +66,37 @@
                             <td>{{ $stall->monthly_rate !== null ? '₱'.number_format((float) $stall->monthly_rate, 2) : 'Not set' }}</td>
                             <td><span class="vendor-status-pill {{ $stall->status === 'Available' ? 'active' : 'pending' }}">{{ $stall->status }}</span></td>
                             <td class="whitespace-nowrap">
-                                <button type="button"
-                                    class="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer"
-                                    onclick='openEditStallModal(@json($stall))'>
-                                    <svg class="size-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    Edit
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <a
+                                        class="inline-flex items-center gap-1.5 rounded border border-transparent px-2 py-1 text-xs font-semibold text-emerald-700 no-underline hover:bg-emerald-50"
+                                        href="{{ route('stalls.show', $stall) }}"
+                                    >
+                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4h7l5 5v11H8a2 2 0 01-2-2V6a2 2 0 012-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4v5h5M10 14h6M10 17h6" /></svg>
+                                        Details
+                                    </a>
+                                    <button
+                                        type="button"
+                                        class="inline-flex size-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-500 transition hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
+                                        onclick='openEditStallModal(@json($stall))'
+                                        aria-label="Edit stall {{ $stall->stall_number }}"
+                                        title="Edit stall"
+                                    >
+                                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    @if ($stall->rentals_count === 0)
+                                        <form method="POST" action="{{ route('stalls.destroy', $stall) }}" onsubmit="return confirm('Delete this stall? This action cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50" aria-label="Delete stall {{ $stall->stall_number }}" title="Delete stall">
+                                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <button type="button" disabled class="inline-flex size-8 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete stall {{ $stall->stall_number }} because it has rental history" title="Stalls with rental history cannot be deleted">
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        </button>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -138,17 +166,32 @@
 
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
-                            <span>Dimensions</span>
-                            <input type="text" name="dimensions" id="stall_dimensions_input" placeholder="e.g. 3m x 3m">
+                            <span>Length (m) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="length_m" id="stall_length_input" min="0.01" max="999999.99" step="0.01" placeholder="e.g. 3" required>
                         </label>
                         <label class="app-modal-field">
-                            <span>Monthly Rate (₱) <span class="text-rose-500">*</span></span>
+                            <span>Width (m) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="width_m" id="stall_width_input" min="0.01" max="999999.99" step="0.01" placeholder="e.g. 3" required>
+                        </label>
+                    </div>
+
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Rate per square meter (₱) <span class="text-rose-500">*</span></span>
                             <div class="relative">
                                 <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                <input type="number" step="0.01" min="0" name="monthly_rate" id="stall_rate_input" class="pl-8" placeholder="3500.00" required>
+                                <input type="number" id="stall_rate_per_sqm_input" min="0" max="99999999.99" step="0.01" class="pl-8" placeholder="Enter rate per m²" required>
+                            </div>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Monthly Rate (₱)</span>
+                            <div class="relative">
+                                <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
+                                <input type="number" id="stall_rate_input" class="pl-8" readonly aria-describedby="stall_rate_formula">
                             </div>
                         </label>
                     </div>
+                    <p id="stall_rate_formula" class="text-xs text-slate-500">Length × Width = <span id="stall_area_output">0.00</span> m² × Rate per m² = Monthly Rate</p>
 
                     <label class="app-modal-field">
                         <span>Initial Status <span class="text-rose-500">*</span></span>
@@ -294,17 +337,32 @@
 
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
-                            <span>Dimensions</span>
-                            <input type="text" name="dimensions" id="edit_stall_dimensions" placeholder="e.g. 3m x 3m">
+                            <span>Length (m) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="length_m" id="edit_stall_length" min="0.01" max="999999.99" step="0.01" required>
                         </label>
                         <label class="app-modal-field">
-                            <span>Monthly Rate (₱) <span class="text-rose-500">*</span></span>
+                            <span>Width (m) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="width_m" id="edit_stall_width" min="0.01" max="999999.99" step="0.01" required>
+                        </label>
+                    </div>
+
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Rate per square meter (₱) <span class="text-rose-500">*</span></span>
                             <div class="relative">
                                 <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                <input type="number" step="0.01" min="0" name="monthly_rate" id="edit_stall_rate" class="pl-8" required>
+                                <input type="number" name="rate_per_sqm" id="edit_stall_rate_per_sqm" min="0" max="99999999.99" step="0.01" class="pl-8" required>
+                            </div>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Monthly Rate (₱)</span>
+                            <div class="relative">
+                                <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
+                                <input type="number" id="edit_stall_rate" class="pl-8" readonly aria-describedby="edit_stall_rate_formula">
                             </div>
                         </label>
                     </div>
+                    <p id="edit_stall_rate_formula" class="text-xs text-slate-500">Length × Width = <span id="edit_stall_area_output">0.00</span> m² × Rate per m² = Monthly Rate</p>
 
                     <label class="app-modal-field">
                         <span>Current Status <span class="text-rose-500">*</span></span>
@@ -339,11 +397,39 @@
             document.getElementById('edit_stall_section').value = stall.market_section || 'Fresh Produce';
             document.getElementById('edit_stall_location').value = stall.location || '';
             document.getElementById('edit_stall_type').value = stall.stall_type || 'Standard';
-            document.getElementById('edit_stall_dimensions').value = stall.dimensions || '';
-            document.getElementById('edit_stall_rate').value = parseFloat(stall.monthly_rate || 0).toFixed(2);
+            document.getElementById('edit_stall_length').value = stall.length_m || '';
+            document.getElementById('edit_stall_width').value = stall.width_m || '';
+            document.getElementById('edit_stall_rate_per_sqm').value = stall.rate_per_sqm || '';
             document.getElementById('edit_stall_status').value = stall.status || 'Available';
+            updateStallRate('edit_stall_length', 'edit_stall_width', 'edit_stall_rate_per_sqm', 'edit_stall_rate', 'edit_stall_area_output');
             openModal('editStallModal');
         }
+
+        function updateStallRate(lengthId, widthId, rateId, totalId, areaId) {
+            const length = Number(document.getElementById(lengthId).value);
+            const width = Number(document.getElementById(widthId).value);
+            const rate = Number(document.getElementById(rateId).value);
+            const area = length > 0 && width > 0 ? length * width : 0;
+            const monthlyRate = area * rate;
+
+            document.getElementById(areaId).textContent = area.toFixed(2);
+            document.getElementById(totalId).value = area > 0 && document.getElementById(rateId).value !== ''
+                ? monthlyRate.toFixed(2)
+                : '';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            [
+                ['stall_length_input', 'stall_width_input', 'stall_rate_per_sqm_input', 'stall_rate_input', 'stall_area_output'],
+                ['edit_stall_length', 'edit_stall_width', 'edit_stall_rate_per_sqm', 'edit_stall_rate', 'edit_stall_area_output'],
+            ].forEach(function (fields) {
+                fields.slice(0, 3).forEach(function (fieldId) {
+                    document.getElementById(fieldId).addEventListener('input', function () {
+                        updateStallRate(...fields);
+                    });
+                });
+            });
+        });
 
         function proceedToStallConfirmation() {
             const form = document.getElementById('addStallForm');
@@ -356,13 +442,14 @@
             const section = document.getElementById('stall_section_input').value;
             const location = document.getElementById('stall_location_input').value || 'Location not specified';
             const type = document.getElementById('stall_type_input').value;
-            const dimensions = document.getElementById('stall_dimensions_input').value || 'Dimensions standard';
+            const length = Number(document.getElementById('stall_length_input').value);
+            const width = Number(document.getElementById('stall_width_input').value);
             const rate = parseFloat(document.getElementById('stall_rate_input').value) || 0;
             const status = document.getElementById('stall_status_input').value;
 
             document.getElementById('cs_stall_number').textContent = `Stall ${stallNumber}`;
             document.getElementById('cs_section').textContent = `Section: ${section}`;
-            document.getElementById('cs_details').textContent = `Type: ${type} · ${dimensions}`;
+            document.getElementById('cs_details').textContent = `Type: ${type} · ${length}m × ${width}m (${(length * width).toFixed(2)} m²)`;
             document.getElementById('cs_location').textContent = `Location: ${location}`;
             document.getElementById('cs_rate').textContent = `₱${rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / month`;
             document.getElementById('cs_status').textContent = status;
