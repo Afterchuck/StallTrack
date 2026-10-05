@@ -172,6 +172,22 @@ class SecurityHardeningTest extends TestCase
         $this->assertSame($originalHash, $admin->fresh()->password);
     }
 
+    public function test_admin_seeder_promotes_an_existing_account_without_resetting_password(): void
+    {
+        $this->app['env'] = 'local';
+        config(['security.demo_admin_password' => 'A-unique-long-passphrase-123']);
+        $admin = User::factory()->create([
+            'email' => 'admin@stalltrack.com',
+            'role' => 'vendor',
+            'password' => Hash::make('already-set-password'),
+        ]);
+
+        (new AdminSeeder)->run();
+
+        $this->assertTrue(Hash::check('already-set-password', $admin->fresh()->password));
+        $this->assertSame('admin', $admin->fresh()->role);
+    }
+
     public function test_deployment_check_flags_known_demo_admin_password_without_exposing_it(): void
     {
         Storage::fake('public');
@@ -199,17 +215,30 @@ class SecurityHardeningTest extends TestCase
         $this->get('https://localhost/login')->assertHeader('Strict-Transport-Security', 'max-age=31536000');
     }
 
-    public function test_admin_seeder_requires_explicit_password_for_new_local_account(): void
+    public function test_admin_seeder_uses_the_default_demo_password_when_config_is_blank(): void
     {
         $this->app['env'] = 'local';
         config(['security.demo_admin_password' => null]);
-        try {
-            (new AdminSeeder)->run();
-            $this->fail('No default password should be used.');
-        } catch (\RuntimeException $exception) {
-            $this->assertStringContainsString('DEMO_ADMIN_PASSWORD', $exception->getMessage());
-        }
-        $this->assertDatabaseCount('users', 0);
+
+        (new AdminSeeder)->run();
+
+        $this->assertDatabaseHas('users', ['email' => 'admin@stalltrack.com', 'role' => 'admin']);
+        $this->assertTrue(Hash::check('admin123', User::firstOrFail()->password));
+    }
+
+    public function test_default_demo_admin_can_log_in_with_the_expected_credentials(): void
+    {
+        $this->assertTrue(app()->environment('testing'));
+        config(['security.demo_admin_password' => 'admin123']);
+
+        (new AdminSeeder)->run();
+
+        $this->post(route('login.store'), [
+            'email' => 'admin@stalltrack.com',
+            'password' => 'admin123',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs(User::where('email', 'admin@stalltrack.com')->firstOrFail());
     }
 
     /** @return array<string, string> */

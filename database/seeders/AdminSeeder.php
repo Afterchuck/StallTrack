@@ -14,16 +14,42 @@ class AdminSeeder extends Seeder
         if (! app()->environment(['local', 'testing'])) {
             throw new RuntimeException('Demo administrator seeding is disabled outside local/testing.');
         }
-        if (User::where('email', 'admin@stalltrack.com')->exists()) {
+
+        $email = 'admin@stalltrack.com';
+        $password = config('security.demo_admin_password');
+
+        if (! is_string($password) || trim($password) === '') {
+            $password = 'admin123';
+        }
+
+        $admin = User::whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
+
+        if ($admin !== null && $admin->role === 'admin' && ! empty($admin->password)) {
             return;
         }
-        $password = config('security.demo_admin_password');
-        if (! is_string($password) || strlen($password) < 12 || strlen($password) > 72) {
-            throw new RuntimeException('Set DEMO_ADMIN_PASSWORD to a unique 12–72 byte password before local seeding.');
+
+        if ($admin === null) {
+            User::create([
+                'email' => $email,
+                'name' => 'Public Market Admin',
+                'password' => Hash::make($password),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+            ]);
+
+            return;
         }
-        User::create([
-            'email' => 'admin@stalltrack.com', 'name' => 'Public Market Admin',
-            'password' => Hash::make($password), 'role' => 'admin', 'email_verified_at' => now(),
+
+        $admin->fill([
+            'name' => $admin->name ?: 'Public Market Admin',
+            'role' => 'admin',
+            'email_verified_at' => $admin->email_verified_at ?? now(),
         ]);
+
+        if (empty($admin->password)) {
+            $admin->password = Hash::make($password);
+        }
+
+        $admin->save();
     }
 }
