@@ -16,11 +16,30 @@
     @endif
 
     <section class="vendor-summary-grid">
-        <article><small>Total contracts</small><strong>{{ $rentals->count() }}</strong></article>
-        <article><small>Active contracts</small><strong>{{ $rentals->where('status', 'Active')->count() }}</strong></article>
-        <article><small>Expiring soon</small><strong>{{ $rentals->filter(fn ($rental): bool => $rental->status === 'Active' && $rental->end_date->isBetween(today(), today()->addDays(30)))->count() }}</strong></article>
-        <article><small>Expired</small><strong>{{ $rentals->where('status', 'Expired')->count() }}</strong></article>
+        <article><small>Total contracts</small><strong>{{ $rentalCounts->total }}</strong></article>
+        <article><small>Active contracts</small><strong>{{ $rentalCounts->active }}</strong></article>
+        <article><small>Expiring soon</small><strong>{{ $expiringSoonCount }}</strong></article>
+        <article><small>Expired</small><strong>{{ $rentalCounts->expired }}</strong></article>
     </section>
+
+    <form method="GET" class="mt-4 flex flex-wrap items-end gap-3">
+        <label class="app-modal-field min-w-56">
+            <span>Search contracts</span>
+            <input type="search" name="search" value="{{ request('search') }}" placeholder="Contract, vendor, stall">
+        </label>
+        <label class="app-modal-field w-44">
+            <span>Status</span>
+            <select name="status">
+                <option value="">All statuses</option>
+                @foreach (['Active', 'Pending', 'Expired', 'Terminated', 'Inactive'] as $status)
+                    <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                @endforeach
+            </select>
+        </label>
+        <button type="submit" class="app-btn-primary">Filter</button>
+        <label class="app-modal-field">Billing cycle<select name="cycle"><option value="">All cycles</option>@foreach (['Monthly', 'Quarterly', 'Weekly', 'Bi-weekly'] as $cycle)<option @selected(request('cycle') === $cycle)>{{ $cycle }}</option>@endforeach</select></label>
+        <a href="{{ route('rentals') }}" class="app-btn-cancel">Clear</a>
+    </form>
 
     <div class="vendor-management-actions mt-4 flex items-center gap-3">
         <button type="button" class="app-btn-primary cursor-pointer text-sm font-semibold inline-flex items-center gap-2" onclick="openModal('addRentalModal')">
@@ -101,8 +120,10 @@
         </div>
     </section>
 
+    <div class="mt-4">{{ $rentals->links() }}</div>
+
     {{-- MODAL: CREATE RENTAL CONTRACT POP-UP WINDOW --}}
-    <div id="addRentalModal" class="app-modal-overlay hidden">
+    <div id="addRentalModal" class="app-modal-overlay {{ $errors->any() ? '' : 'hidden' }}" role="dialog" aria-modal="true" aria-label="Create Rental Contract">
         <div class="app-modal-panel">
             <div class="app-modal-header">
                 <div class="flex items-center gap-3">
@@ -117,9 +138,31 @@
                 <button type="button" class="app-modal-close" onclick="closeModal('addRentalModal')">&times;</button>
             </div>
 
-            <form id="addRentalForm" method="POST" action="{{ route('rentals.store') }}">
+            <form id="addRentalForm" method="POST" action="{{ route('rentals.store') }}" onsubmit="event.preventDefault(); proceedToRentalConfirmation()">
                 @csrf
                 <div class="app-modal-body">
+                    @if ($errors->any())
+                        <div class="form-alert" role="alert">
+                            <strong>Please correct the following:</strong>
+                            <ul>
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    @if ($availableStalls->isEmpty())
+                        <div class="app-modal-banner" role="status">
+                            <p>No stalls are available for a new rental. Register a stall or review existing assignments first.</p>
+                            <a class="app-btn-primary" href="{{ route('stalls') }}">Manage stalls</a>
+                        </div>
+                    @endif
+                    @if ($vendors->isEmpty())
+                        <div class="app-modal-banner" role="status">
+                            <p>No vendors without an active rental are available.</p>
+                            <a class="app-btn-cancel" href="{{ route('vendors.index') }}">Manage vendors</a>
+                        </div>
+                    @endif
                     <div class="space-y-3">
                         <span class="app-modal-section-title">1. Parties & Stall Assignment</span>
                         <div class="app-modal-grid">
@@ -128,7 +171,7 @@
                                 <select name="vendor_id" id="rental_vendor_select" required>
                                     <option value="">Select vendor</option>
                                     @foreach ($vendors as $v)
-                                        <option value="{{ $v->id }}" data-name="{{ $v->name }}" data-section="{{ $v->market_section }}">
+                                        <option value="{{ $v->id }}" data-name="{{ $v->name }}" data-section="{{ $v->market_section }}" @selected(old('vendor_id') == $v->id)>
                                             {{ $v->name }} ({{ $v->market_section ?: 'Vendor' }})
                                         </option>
                                     @endforeach
@@ -144,7 +187,7 @@
                                             data-rate="{{ $st->monthly_rate }}"
                                             data-section="{{ $st->market_section }}"
                                             data-location="{{ $st->location }}"
-                                            data-dimensions="{{ $st->dimensions }}">
+                                            data-dimensions="{{ $st->dimensions }}" @selected(old('stall_id') == $st->id)>
                                             {{ $st->stall_number }} - {{ $st->market_section }} (₱{{ number_format((float) $st->monthly_rate, 2) }})
                                         </option>
                                     @empty
@@ -160,13 +203,13 @@
                         <div class="app-modal-grid">
                             <label class="app-modal-field">
                                 <span>Contract Number <span class="text-rose-500">*</span></span>
-                                <input type="text" name="contract_number" id="rental_contract_number" value="CTR-{{ date('Y') }}-{{ rand(1000, 9999) }}" required>
+                                <input type="text" name="contract_number" id="rental_contract_number" value="{{ old('contract_number', 'CTR-'.Illuminate\Support\Str::uuid()) }}" maxlength="50" required>
                             </label>
                             <label class="app-modal-field">
                                 <span>Rental Rate (₱ / cycle) <span class="text-rose-500">*</span></span>
                                 <div class="relative">
                                     <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                    <input type="number" step="0.01" min="0" name="rent_amount" id="rental_rent_amount" class="pl-8" placeholder="3500.00" required>
+                                    <input type="number" step="0.01" min="0" name="rent_amount" id="rental_rent_amount" class="pl-8" value="{{ old('rent_amount') }}" placeholder="3500.00" required>
                                 </div>
                             </label>
                         </div>
@@ -175,18 +218,17 @@
                             <label class="app-modal-field">
                                 <span>Billing Cycle <span class="text-rose-500">*</span></span>
                                 <select name="billing_cycle" id="rental_billing_cycle" required>
-                                    <option value="Monthly" selected>Monthly</option>
-                                    <option value="Quarterly">Quarterly</option>
-                                    <option value="Bi-weekly">Bi-weekly</option>
-                                    <option value="Weekly">Weekly</option>
+                                    @foreach (['Monthly', 'Quarterly', 'Bi-weekly', 'Weekly'] as $cycle)
+                                        <option value="{{ $cycle }}" @selected(old('billing_cycle', 'Monthly') === $cycle)>{{ $cycle }}</option>
+                                    @endforeach
                                 </select>
                             </label>
                             <label class="app-modal-field">
                                 <span>Contract Status <span class="text-rose-500">*</span></span>
                                 <select name="status" id="rental_status" required>
-                                    <option value="Active" selected>Active</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Inactive">Inactive</option>
+                                    @foreach (['Active', 'Pending', 'Inactive'] as $status)
+                                        <option value="{{ $status }}" @selected(old('status', 'Active') === $status)>{{ $status }}</option>
+                                    @endforeach
                                 </select>
                             </label>
                         </div>
@@ -194,16 +236,16 @@
                         <div class="app-modal-grid">
                             <label class="app-modal-field">
                                 <span>Start Date <span class="text-rose-500">*</span></span>
-                                <input type="date" name="start_date" id="rental_start_date" value="{{ date('Y-m-d') }}" required>
+                                <input type="date" name="start_date" id="rental_start_date" value="{{ old('start_date', today()->toDateString()) }}" required>
                             </label>
                             <label class="app-modal-field">
                                 <span>End Date <span class="text-rose-500">*</span></span>
-                                <input type="date" name="end_date" id="rental_end_date" value="{{ date('Y-m-d', strtotime('+1 year')) }}" required>
+                                <input type="date" name="end_date" id="rental_end_date" value="{{ old('end_date', today()->addYear()->toDateString()) }}" required>
                             </label>
                         </div>
 
                         <div class="app-modal-banner">
-                            <span class="text-slate-700 font-medium">Security Deposit Required (2 mos):</span>
+                            <span class="text-slate-700 font-medium">Deposit estimate (2 billing cycles; not recorded):</span>
                             <strong id="rental_deposit_display" class="text-emerald-700 font-bold text-sm">₱0.00</strong>
                         </div>
                     </div>
@@ -211,7 +253,7 @@
 
                 <div class="app-modal-footer">
                     <button type="button" class="app-btn-cancel" onclick="closeModal('addRentalModal')">Cancel</button>
-                    <button type="button" class="app-btn-primary" onclick="proceedToRentalConfirmation()">Save & Review Contract</button>
+                    <button type="submit" class="app-btn-primary" @disabled($availableStalls->isEmpty() || $vendors->isEmpty())>Save & Review Contract</button>
                 </div>
             </form>
         </div>
@@ -270,8 +312,8 @@
 
                 <div class="app-notice-box">
                     <svg class="size-5 text-sky-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p class="m-0 leading-relaxed text-slate-700">
-                        <strong>Important Notice:</strong> Confirming will immediately mark the selected stall as <strong>Occupied</strong>, lock it from the available pool, and record an active rental contract.
+                    <p id="rental_status_notice" class="m-0 leading-relaxed text-slate-700">
+                        An active contract occupies the stall. Pending and inactive contracts do not reserve it.
                     </p>
                 </div>
 
@@ -304,7 +346,6 @@
             const stallSelect = document.getElementById('rental_stall_select');
             const rentInput = document.getElementById('rental_rent_amount');
             const depositDisplay = document.getElementById('rental_deposit_display');
-            const contractInput = document.getElementById('rental_contract_number');
 
             function updateDeposit() {
                 const rate = parseFloat(rentInput.value) || 0;
@@ -320,11 +361,6 @@
                             rentInput.value = parseFloat(opt.dataset.rate).toFixed(2);
                             updateDeposit();
                         }
-                        if (opt.dataset.number && contractInput) {
-                            const year = new Date().getFullYear();
-                            const clean = opt.dataset.number.replace(/[^A-Za-z0-9]/g, '');
-                            contractInput.value = `CTR-${year}-${clean}`;
-                        }
                     }
                 });
             }
@@ -332,6 +368,14 @@
             if (rentInput) {
                 rentInput.addEventListener('input', updateDeposit);
             }
+            updateDeposit();
+            const startInput = document.getElementById('rental_start_date');
+            const endInput = document.getElementById('rental_end_date');
+            function updateDateLimit() {
+                endInput.min = startInput.value;
+            }
+            startInput.addEventListener('change', updateDateLimit);
+            updateDateLimit();
         });
 
         function proceedToRentalConfirmation() {
@@ -364,7 +408,12 @@
             const formattedRate = '₱' + rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const formattedDeposit = '₱' + deposit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             document.getElementById('cr_rate_text').textContent = `${formattedRate} / ${cycle}`;
-            document.getElementById('cr_deposit_text').textContent = `Security Deposit: ${formattedDeposit} (2 months bond required)`;
+            document.getElementById('cr_deposit_text').textContent = 'Deposit estimate: ' + formattedDeposit + ' (2 billing cycles; not recorded)';
+            document.getElementById('cr_duration_text').textContent = '';
+            const status = document.getElementById('rental_status').value;
+            document.getElementById('rental_status_notice').textContent = status === 'Active'
+                ? 'Confirming creates an active rental and marks this stall as occupied.'
+                : 'Confirming creates a ' + status.toLowerCase() + ' contract. The stall remains available.';
 
             const startFormatted = new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
             const endFormatted = new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -397,7 +446,19 @@
         }
 
         function executeRentalSubmit() {
-            document.getElementById('addRentalForm').submit();
+            if (!document.getElementById('cr_agree_checkbox').checked) {
+                return;
+            }
+            const form = document.getElementById('addRentalForm');
+            if (!form.checkValidity()) {
+                backToEditRental();
+                form.reportValidity();
+                return;
+            }
+            const button = document.getElementById('cr_submit_btn');
+            button.disabled = true;
+            button.textContent = 'Saving contract…';
+            HTMLFormElement.prototype.submit.call(form);
         }
     </script>
 </x-layouts.admin>

@@ -9,6 +9,9 @@ class VendorSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Demo vendor seeding is disabled outside local/testing.');
+        }
         $vendors = [
             ['name' => 'Elena Rostova', 'stall_number' => 'A-102', 'market_section' => 'Fresh Produce', 'contact_number' => '+63 917 555 0192', 'email' => 'elena@example.com', 'monthly_rent' => 3500, 'status' => 'Active'],
             ['name' => 'Marcus Chen', 'stall_number' => 'B-045', 'market_section' => 'Dry Goods', 'contact_number' => '+63 920 888 2314', 'email' => 'marcus@example.com', 'monthly_rent' => 4200, 'status' => 'Active'],

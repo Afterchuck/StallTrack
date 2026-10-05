@@ -2,7 +2,7 @@
     @php
         $vendorPayments = $payments ?? collect();
         $firstName = explode(' ', auth()->user()->name)[0];
-        $totalPaid = $vendorPayments->sum('amount');
+        $totalPaid = $vendorPayments->where('status', 'Paid')->sum('amount');
     @endphp
 
     <div class="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-10">
@@ -21,6 +21,32 @@
         @if (session('success'))
             <div class="mb-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ session('success') }}</div>
         @endif
+
+        <section class="mb-6 grid gap-3" aria-labelledby="announcements-heading">
+            <h2 id="announcements-heading" class="m-0 text-lg font-bold text-slate-900">Market announcements</h2>
+            @forelse ($announcements as $announcement)
+                <article class="rounded-md border border-slate-200 bg-white p-5">
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($announcement->is_pinned)
+                            <span class="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Pinned</span>
+                        @endif
+                        <h3 class="m-0 break-words text-base font-bold text-slate-900">{{ $announcement->title }}</h3>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-500">Market Administration · {{ $announcement->published_at->format('M d, Y') }}</p>
+                    <p class="mb-0 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{{ $announcement->message }}</p>
+                </article>
+            @empty
+                <p class="m-0 rounded-md border border-slate-200 bg-white p-5 text-sm text-slate-500">No announcements right now. Check back for market updates.</p>
+            @endforelse
+            {{ $announcements->links() }}
+        </section>
+
+        <section class="mb-6 rounded-md border border-slate-200 bg-white p-5">
+            <h2 class="m-0 text-lg font-bold text-slate-900">Outstanding bills</h2>
+            <p class="text-sm text-slate-500">Payments are recorded by Market Administration. Partial payments reduce the remaining balance.</p>
+            <x-bill-table :bills="$bills" />
+            <a class="mt-3 inline-block text-sm font-semibold text-emerald-700" href="{{ route('vendor.payments') }}">View all bills and payment history</a>
+        </section>
 
         <section class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Account summary">
             <article class="border border-slate-200 bg-white px-5 py-4"><span class="block text-[10px] font-semibold uppercase tracking-[.1em] text-slate-500">Total paid to date</span><strong class="mt-2 block text-xl font-bold tracking-tight text-slate-900">₱{{ number_format((float) $totalPaid, 2) }}</strong><small class="mt-2 block text-[10px] text-slate-500">Recorded by Market Administration</small></article>

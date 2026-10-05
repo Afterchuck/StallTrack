@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Payment;
+use App\Models\Stall;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +16,8 @@ class VendorManagementTest extends TestCase
     public function test_admin_can_manage_a_vendor_payment_and_details(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
+        Stall::create(['stall_number' => 'A-01', 'market_section' => 'Fresh Produce', 'status' => 'Available']);
+        Stall::create(['stall_number' => 'B-05', 'market_section' => 'Dry Goods', 'status' => 'Available']);
         $vendor = Vendor::create([
             'name' => 'Vendor One',
             'email' => 'vendor@example.com',

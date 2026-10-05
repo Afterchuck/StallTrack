@@ -2,12 +2,26 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 
 class Vendor extends Model
 {
+    use HasFactory, Notifiable;
+
+    public static function forUser(User $user): ?self
+    {
+        return $user->vendor;
+    }
+
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
+    }
+
     protected $fillable = [
         'user_id', 'name', 'stall_number', 'contract_until', 'status', 'contact_number',
         'email', 'residential_address', 'photo_path', 'market_section',

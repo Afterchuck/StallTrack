@@ -27,15 +27,15 @@
             @csrf
 
             <div class="field">
-                <label for="vendor_name">
+                <label for="vendor_id">
                     Vendor
                 </label>
-                <select id="vendor_name" name="vendor_name" required>
+                <select id="vendor_id" name="vendor_id" required>
                     <option value="">
                         Select vendor
                     </option>
                     @foreach ($vendors as $vendor)
-                        <option value="{{ $vendor->name }}">
+                        <option value="{{ $vendor->id }}" @selected(old('vendor_id') == $vendor->id)>
                             {{ $vendor->name }}
                         </option>
                     @endforeach

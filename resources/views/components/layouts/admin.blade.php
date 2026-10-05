@@ -7,24 +7,25 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen flex-col bg-[#f7f9fc] font-[Arial,Helvetica,sans-serif] text-[#192235]">
-    <header class="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-7 bg-[#0d1a31] px-4 text-white shadow-md md:flex-nowrap md:px-8">
+    <header class="sticky top-0 z-40 flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 bg-[#0d1a31] px-4 py-2 text-white shadow-md md:px-8 xl:flex-nowrap xl:gap-7">
         <a class="flex items-center gap-2.5 text-lg font-bold text-white no-underline" href="{{ route('dashboard') }}">
             <span class="grid size-5 place-items-center rounded bg-[#08b98a] text-[11px]">▥</span>
             <strong>Stall<span class="text-[#08d29c]">Track</span></strong>
         </a>
 
-        <nav class="order-3 flex w-full items-center gap-2 overflow-x-auto md:order-none md:w-auto" aria-label="Main navigation">
+        <nav class="order-3 flex w-full min-w-0 items-center gap-2 overflow-x-auto [&>a]:shrink-0 [&>a]:min-h-11 xl:order-none xl:w-auto" aria-label="Main navigation">
             @foreach (['dashboard' => ['Dashboard', route('dashboard')], 'vendors' => ['Vendors', route('vendors.index')], 'stalls' => ['Stalls', route('stalls')], 'rentals' => ['Rentals', route('rentals')], 'payments' => ['Collections', route('payments')], 'reports' => ['Reports', route('reports')]] as $key => [$label, $url])
                 <a @class(['rounded-md px-4 py-2.5 text-sm font-medium text-slate-300 no-underline transition hover:bg-white/10 hover:text-white', 'bg-[#087e69] text-white' => ($active ?? 'dashboard') === $key]) href="{{ $url }}">
                     {{ $label }}
                 </a>
             @endforeach
+            <a @class(['rounded-md px-4 py-2.5 text-sm font-medium text-slate-300 no-underline transition hover:bg-white/10 hover:text-white', 'bg-[#087e69] text-white' => ($active ?? '') === 'announcements']) href="{{ route('announcements') }}">Announcements</a>
         </nav>
 
         <details class="relative ml-auto">
             <summary class="flex cursor-pointer list-none items-center gap-2">
-                <div class="text-right">
-                    <strong class="block text-xs">{{ auth()->user()->name ?? 'Eleanor Vance' }}</strong>
+                <div class="min-w-0 max-w-28 text-right sm:max-w-48">
+                    <strong class="block truncate text-xs">{{ auth()->user()->name ?? 'Eleanor Vance' }}</strong>
                     <small class="block text-[10px] text-[#08d29c]">Market Admin</small>
                 </div>
                 <span class="grid size-8 place-items-center rounded-full bg-[#087e69] text-xs font-bold">

@@ -45,8 +45,11 @@
             <option value="">All statuses</option>
             <option value="Active" @selected(request('contract_status') === 'Active')>Active</option>
             <option value="Pending" @selected(request('contract_status') === 'Pending')>Pending</option>
+            <option value="Inactive" @selected(request('contract_status') === 'Inactive')>Inactive</option>
         </select>
+        <label>Section<select name="stall_type"><option value="">All sections</option>@foreach ($sections as $section)<option @selected(request('stall_type') === $section)>{{ $section }}</option>@endforeach</select></label>
         <button class="vendor-secondary-action" type="submit">Filter</button>
+        <a href="{{ route('vendors.index') }}">Reset</a>
     </form>
 
     <section class="vendor-directory-card">

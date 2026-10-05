@@ -80,21 +80,21 @@
                 <strong class="text-base font-bold text-slate-900">
                     {{ $title }}
                 </strong>
-                <div class="flex items-center gap-4">
-                    <span class="hidden items-center gap-1.5 text-xs text-slate-500 xl:flex">
-                        <i class="size-1.5 rounded-full bg-[#08b98a]"></i>
-                        Lease active until Dec 2026
-                    </span>
-                    <a class="rounded-md bg-[#087e69] px-4 py-2.5 text-xs font-semibold text-white no-underline hover:bg-[#066b59]" href="{{ route('vendor.payments') }}">
-                        View payments
-                    </a>
-                </div>
+                <a href="{{ route('vendor.notifications') }}" class="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-[#087e69]" aria-label="Notifications, {{ $unreadNotificationCount }} unread">
+                    <svg class="size-5 fill-none stroke-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" stroke-width="1.7"/></svg>
+                    Notifications <span class="rounded-full bg-emerald-100 px-2 py-0.5">{{ $unreadNotificationCount }}</span>
+                </a>
             </header>
+
+            <form class="flex justify-end border-b border-slate-200 bg-white px-4 py-1 md:hidden" method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="min-h-11 cursor-pointer rounded-md px-3 py-2 text-sm font-semibold text-[#087e69] hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700" type="submit">Sign out</button>
+            </form>
 
             <nav class="flex gap-2 overflow-x-auto border-b border-slate-200 bg-[#0d1a31] px-4 py-2 md:hidden" aria-label="Mobile vendor navigation">
                 @foreach ([['overview', 'Overview', route('vendor.dashboard')], ['stall', 'My stall', route('vendor.stall')], ['payments', 'Payments', route('vendor.payments')]] as [$key, $label, $url])
                     <a @class([
-                        'shrink-0 rounded-md px-3 py-2 text-xs font-semibold text-slate-300 no-underline',
+                        'flex min-h-11 shrink-0 items-center rounded-md px-3 py-2 text-xs font-semibold text-slate-300 no-underline',
                         'bg-[#087e69] text-white' => $active === $key,
                     ]) href="{{ $url }}">{{ $label }}</a>
                 @endforeach

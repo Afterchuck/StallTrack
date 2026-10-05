@@ -1,30 +1,31 @@
-<x-layouts.vendor title="Payment History" active="payments">
-    @php
-        $totalPaid = $payments->sum('amount');
-        $latestPayment = $payments->first();
-    @endphp
-
+<x-layouts.vendor title="Bills & Payment History" active="payments">
     <div class="mx-auto max-w-[1180px] px-5 py-8 md:px-8 md:py-10">
-        <p class="m-0 text-[10px] font-semibold tracking-[.12em] text-emerald-700">{{ $vendor?->stall_number ?: 'PENDING ASSIGNMENT' }} · MUNICIPAL MARKET</p>
-        <section class="mt-2 flex flex-wrap items-start justify-between gap-4"><div><h1 class="m-0 text-3xl font-bold tracking-[-.03em] text-slate-900">Payment History</h1><p class="mt-2 max-w-3xl text-sm text-slate-500">Official payment records and receipts entered by Market Administration.</p></div><a class="text-sm font-semibold text-emerald-700 no-underline hover:underline" href="{{ route('vendor.stall') }}">View lease details →</a></section>
-
-        <section class="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-md border border-slate-200 bg-white p-6"><small class="font-semibold uppercase tracking-wide text-slate-400">Total paid to date</small><strong class="mt-3 block text-2xl text-slate-900">₱{{ number_format((float) $totalPaid, 2) }}</strong><p class="mt-2 text-sm text-slate-500">{{ $payments->total() }} recorded receipt(s)</p></article>
-            <article class="rounded-md border border-slate-200 bg-white p-6"><small class="font-semibold uppercase tracking-wide text-slate-400">Latest receipt</small><strong class="mt-3 block text-2xl text-slate-900">{{ $latestPayment?->receipt_number ?: '—' }}</strong><p class="mt-2 text-sm text-slate-500">{{ $latestPayment?->paid_at?->format('M d, Y') ?: 'No payment recorded' }}</p></article>
-            <article class="rounded-md border border-slate-200 bg-white p-6"><small class="font-semibold uppercase tracking-wide text-slate-400">Rental rate</small><strong class="mt-3 block text-2xl text-slate-900">{{ $vendor?->monthly_rent ? '₱'.number_format((float) $vendor->monthly_rent, 2) : 'Not set' }}</strong><p class="mt-2 text-sm text-slate-500">{{ $vendor?->billing_cycle ?: 'Billing cycle not set' }}</p></article>
-            <article class="rounded-md border border-slate-200 bg-white p-6"><small class="font-semibold uppercase tracking-wide text-slate-400">Payment source</small><strong class="mt-3 block text-2xl text-emerald-700">Admin</strong><p class="mt-2 text-sm text-slate-500">Market Administration</p></article>
+        <section class="page-heading"><h1>Bills &amp; payment history</h1><p>Full and partial payments recorded by Market Administration.</p></section>
+        <section class="mb-5 rounded-md border border-slate-200 bg-white p-5">
+            <small class="text-slate-500">Total confirmed payments</small>
+            <strong class="mt-2 block text-2xl">₱{{ number_format((float) $totalPaid, 2) }}</strong>
+            <p class="text-sm text-slate-500">Reversed and unconfirmed receipts are excluded.</p>
         </section>
-
-        <section class="mt-9 rounded-md border border-slate-200 bg-white">
-            <header class="border-b border-slate-200 px-6 py-5"><h2 class="m-0 text-lg font-bold text-slate-800">Payment records &amp; digital receipts</h2><p class="mt-1 text-sm text-slate-500">Payments validated and recorded by the Municipal Market Treasury.</p></header>
-            <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-6 py-4">Receipt</th><th class="px-6 py-4">Date received</th><th class="px-6 py-4">Amount paid</th><th class="px-6 py-4">Status</th></tr></thead><tbody>
-                @forelse ($payments as $payment)
-                    <tr class="border-t border-slate-100"><td class="px-6 py-4 font-mono font-semibold text-slate-700">{{ $payment->receipt_number }}</td><td class="px-6 py-4 text-slate-600">{{ $payment->paid_at->format('M d, Y') }}</td><td class="px-6 py-4 font-semibold text-slate-900">₱{{ number_format((float) $payment->amount, 2) }}</td><td class="px-6 py-4"><span class="rounded px-2 py-1 text-xs font-semibold {{ $payment->status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $payment->status }}</span></td></tr>
-                @empty
-                    <tr><td class="px-6 py-8 text-center text-slate-500" colspan="4">No payments have been recorded for your account.</td></tr>
-                @endforelse
-            </tbody></table></div>
-            <div class="border-t border-slate-200 px-6 py-4">{{ $payments->links() }}</div>
+        <section class="mb-6 rounded-md border border-slate-200 bg-white p-5">
+            <h2 class="text-lg font-bold">Your billing periods</h2>
+            <x-bill-table :bills="$bills" />
+            {{ $bills->withQueryString()->links() }}
+        </section>
+        <section class="rounded-md border border-slate-200 bg-white p-5">
+            <h2 class="text-lg font-bold">Receipt history</h2>
+            <div class="dashboard-table-wrap"><table class="dashboard-table">
+                <thead><tr><th>Receipt</th><th>Billing period</th><th>Date received</th><th>Amount received</th><th>Status</th></tr></thead>
+                <tbody>@forelse ($payments as $payment)
+                    <tr>
+                        <td>{{ $payment->receipt_number }}</td>
+                        <td>{{ $payment->bill ? $payment->bill->period_start->format('M d, Y').' – '.$payment->bill->period_end->format('M d, Y') : 'Not assigned to a bill' }}</td>
+                        <td>{{ $payment->paid_at->format('M d, Y') }}</td>
+                        <td>₱{{ number_format((float) $payment->amount, 2) }}</td>
+                        <td>{{ $payment->status === 'Paid' ? 'Confirmed' : $payment->status }}</td>
+                    </tr>
+                @empty<tr><td colspan="5">No payments have been recorded for your account.</td></tr>@endforelse</tbody>
+            </table></div>
+            <div class="mt-4">{{ $payments->withQueryString()->links() }}</div>
         </section>
     </div>
 </x-layouts.vendor>

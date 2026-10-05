@@ -104,7 +104,11 @@
 
                 <p class="mt-7 text-center text-sm text-[#718078]">
                     New to StallTrack?
-                    <a href="{{ route('register') }}" class="ml-1 font-semibold text-[#087b59] underline decoration-[#087b59]/30 underline-offset-4 hover:decoration-[#087b59]">Create an account</a>
+                    @if (config('security.registration_enabled'))
+                        <a href="{{ route('register') }}" class="ml-1 font-semibold text-[#087b59] underline decoration-[#087b59]/30 underline-offset-4 hover:decoration-[#087b59]">Create an account</a>
+                    @else
+                        <span>Contact market administration for account access.</span>
+                    @endif
                 </p>
 
                 <div class="mt-9 flex items-center justify-center gap-2 border-t border-[#edf1ee] pt-5 text-xs text-[#839087]">

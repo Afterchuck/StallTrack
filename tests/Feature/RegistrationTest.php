@@ -57,8 +57,8 @@ class RegistrationTest extends TestCase
             'email' => 'admin@example.com',
             'mobile_number' => '9171234567',
             'role' => 'admin',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'A-long-test-passphrase-123',
+            'password_confirmation' => 'A-long-test-passphrase-123',
             'terms' => '1',
         ], $overrides);
     }

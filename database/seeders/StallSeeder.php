@@ -14,6 +14,9 @@ class StallSeeder extends Seeder
      */
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Demo stall seeding is disabled outside local/testing.');
+        }
         $stalls = [
             [
                 'stall_number' => 'A-102',

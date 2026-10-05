@@ -16,11 +16,30 @@
     @endif
 
     <section class="vendor-summary-grid">
-        <article><small>Total stalls</small><strong>{{ $stalls->count() }}</strong></article>
-        <article><small>Occupied</small><strong>{{ $stalls->where('status', 'Occupied')->count() }}</strong></article>
-        <article><small>Available</small><strong>{{ $stalls->where('status', 'Available')->count() }}</strong></article>
-        <article><small>Inactive</small><strong>{{ $stalls->where('status', 'Inactive')->count() }}</strong></article>
+        <article><small>Total stalls</small><strong>{{ $stallCounts->total }}</strong></article>
+        <article><small>Occupied</small><strong>{{ $stallCounts->occupied }}</strong></article>
+        <article><small>Available</small><strong>{{ $stallCounts->available }}</strong></article>
+        <article><small>Inactive</small><strong>{{ $stallCounts->inactive }}</strong></article>
     </section>
+
+    <form method="GET" class="mt-4 flex flex-wrap items-end gap-3">
+        <label class="app-modal-field min-w-56">
+            <span>Search stalls</span>
+            <input type="search" name="search" value="{{ request('search') }}" placeholder="Number, section, location">
+        </label>
+        <label class="app-modal-field w-44">
+            <span>Status</span>
+            <select name="status">
+                <option value="">All statuses</option>
+                @foreach (['Available', 'Occupied', 'Inactive'] as $status)
+                    <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                @endforeach
+            </select>
+        </label>
+        <button type="submit" class="app-btn-primary">Filter</button>
+        <label class="app-modal-field">Section<select name="section"><option value="">All sections</option>@foreach ($sections as $section)<option @selected(request('section') === $section)>{{ $section }}</option>@endforeach</select></label>
+        <a href="{{ route('stalls') }}" class="app-btn-cancel">Clear</a>
+    </form>
 
     <div class="vendor-management-actions mt-4 flex items-center gap-3">
         <button type="button" class="app-btn-primary cursor-pointer text-sm font-semibold inline-flex items-center gap-2" onclick="openModal('addStallModal')">
@@ -59,6 +78,8 @@
             </table>
         </div>
     </section>
+
+    <div class="mt-4">{{ $stalls->links() }}</div>
 
     {{-- ADD STALL MODAL --}}
     <div id="addStallModal" class="app-modal-overlay hidden">

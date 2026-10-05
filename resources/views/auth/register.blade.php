@@ -57,7 +57,7 @@
             @foreach ([
                 ['email', 'Email Address', 'email', 'you@example.com'],
                 ['mobile_number', 'Mobile Number', 'tel', '9171234567'],
-                ['password', 'Password', 'password', 'Create a password'],
+                ['password', 'Password (12+ characters)', 'password', 'Use a long, unique passphrase'],
                 ['password_confirmation', 'Confirm Password', 'password', 'Confirm your password']
             ] as [$id, $label, $type, $placeholder])
                 <div class="grid gap-[6px]">
