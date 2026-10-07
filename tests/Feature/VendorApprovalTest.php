@@ -45,7 +45,7 @@ class VendorApprovalTest extends TestCase
             'email' => $user->email,
             'password' => 'A-long-test-passphrase-123',
         ])->assertSessionHasErrors([
-            'email' => 'Your vendor account has not been approved yet.',
+            'email' => 'Your vendor account has not been approved yet. Please wait at least 24 hours for admin approval.',
         ]);
 
         $this->assertGuest();
@@ -91,7 +91,7 @@ class VendorApprovalTest extends TestCase
             'email' => $user->email,
             'password' => 'A-long-test-passphrase-123',
         ])->assertSessionHasErrors([
-            'email' => 'Your vendor account has not been approved yet.',
+            'email' => 'Your vendor account has not been approved yet. Please wait at least 24 hours for admin approval.',
         ]);
         $this->assertGuest();
 
@@ -132,7 +132,7 @@ class VendorApprovalTest extends TestCase
             ->assertSee('Not approved')
             ->assertSee(route('vendors.approval.update', $vendor))
             ->assertSee(route('vendors.show', $vendor))
-            ->assertSee(route('vendors.edit', $vendor))
+            ->assertSee('id="editVendorModal"', false)
             ->assertDontSee('Edit details');
     }
 }

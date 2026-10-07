@@ -50,7 +50,7 @@
     <div class="vendor-management-actions mt-4 flex items-center gap-3">
         <button type="button" class="app-btn-primary cursor-pointer text-sm font-semibold inline-flex items-center gap-2" onclick="openModal('addRentalModal')">
             <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-            + New Rental Agreement
+            + Add Rental
         </button>
     </div>
 
@@ -90,42 +90,26 @@
                             </td>
                             <td class="whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    @if ($isExpiringSoon)
-                                        <button type="button" class="inline-flex items-center gap-1 rounded bg-emerald-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-900 transition cursor-pointer border-0" onclick='openEditRentalModal(@json($rental), "renew")'>
-                                            Renew
-                                        </button>
-                                    @elseif ($rental->status === 'Expired')
-                                        <button type="button" class="inline-flex items-center gap-1 rounded bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-200 transition cursor-pointer border-0" onclick='openEditRentalModal(@json($rental), "re-lease")'>
-                                            Re-lease
-                                        </button>
-                                    @elseif ($rental->status === 'Active')
-                                        <button type="button" class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition cursor-pointer bg-transparent border-0" onclick='openEditRentalModal(@json($rental))'>
-                                            Details
-                                            <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        </button>
-                                    @else
-                                        <button type="button" class="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition cursor-pointer border-0" onclick='openEditRentalModal(@json($rental))'>
-                                            Archive
-                                        </button>
-                                    @endif
-
                                     <button type="button"
                                         title="Edit Contract"
-                                        class="inline-flex size-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer"
+                                        aria-label="Edit contract {{ $rental->contract_number }}"
+                                        class="inline-flex size-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-500 hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer"
+                                        data-rental-id="{{ $rental->id }}"
                                         onclick='openEditRentalModal(@json($rental))'>
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                     </button>
                                     @if ($rental->bills_count === 0)
-                                        <form method="POST" action="{{ route('rentals.destroy', $rental) }}" onsubmit="return confirm('Delete this rental contract? This action cannot be undone.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex size-7 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50" aria-label="Delete rental {{ $rental->contract_number }}" title="Delete rental">
-                                                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                            class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50"
+                                            data-delete-url="{{ route('rentals.destroy', $rental) }}"
+                                            data-contract-number="{{ $rental->contract_number }}"
+                                            aria-label="Delete rental {{ $rental->contract_number }}"
+                                            title="Delete rental">
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        </button>
                                     @else
-                                        <button type="button" disabled class="inline-flex size-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete rental {{ $rental->contract_number }} because it has billing history" title="Rentals with billing history cannot be deleted">
-                                            <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        <button type="button" disabled class="inline-flex size-8 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete rental {{ $rental->contract_number }} because it has billing history" title="Rentals with billing history cannot be deleted">
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
                                         </button>
                                     @endif
                                 </div>
@@ -142,7 +126,7 @@
     <div class="mt-4">{{ $rentals->links() }}</div>
 
     {{-- MODAL: CREATE RENTAL CONTRACT POP-UP WINDOW --}}
-    <div id="addRentalModal" class="app-modal-overlay {{ $errors->any() ? '' : 'hidden' }}" role="dialog" aria-modal="true" aria-label="Create Rental Contract">
+    <div id="addRentalModal" class="app-modal-overlay {{ $errors->any() && old('_form', 'add_rental') === 'add_rental' ? '' : 'hidden' }}" role="dialog" aria-modal="true" aria-label="Create Rental Contract">
         <div class="app-modal-panel">
             <div class="app-modal-header">
                 <div class="flex items-center gap-3">
@@ -150,7 +134,7 @@
                         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </div>
                     <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Create Rental Contract</h2>
+                        <h2 class="text-base font-bold text-slate-900 m-0">Add Rental</h2>
                         <p class="text-xs text-slate-500 m-0 mt-0.5">Assign an available stall to a vendor under a formal tenancy agreement</p>
                     </div>
                 </div>
@@ -159,6 +143,7 @@
 
             <form id="addRentalForm" method="POST" action="{{ route('rentals.store') }}" onsubmit="event.preventDefault(); proceedToRentalConfirmation()">
                 @csrf
+                <input type="hidden" name="_form" value="add_rental">
                 <div class="app-modal-body">
                     @if ($errors->any())
                         <div class="form-alert" role="alert">
@@ -218,11 +203,12 @@
                     </div>
 
                     <div class="space-y-3">
-                        <span class="app-modal-section-title">2. Contract Terms & Rates</span>
+                        <span class="app-modal-section-title">2. Financial Terms & Contract Dates</span>
                         <div class="app-modal-grid">
                             <label class="app-modal-field">
-                                <span>Contract Number <span class="text-rose-500">*</span></span>
-                                <input type="text" name="contract_number" id="rental_contract_number" value="{{ old('contract_number', 'CTR-'.Illuminate\Support\Str::uuid()) }}" maxlength="50" required>
+                                <span>Contract Number</span>
+                                <input type="text" id="rental_contract_number" value="Auto-generated on save" readonly aria-describedby="rental_contract_number_help">
+                                <small id="rental_contract_number_help" class="text-slate-500">A short unique reference will be assigned automatically.</small>
                             </label>
                             <label class="app-modal-field">
                                 <span>Rental Rate (₱ / cycle) <span class="text-rose-500">*</span></span>
@@ -352,6 +338,132 @@
         </div>
     </div>
 
+    <div id="editRentalModal" class="app-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="editRentalTitle"
+        data-old-rental-id="{{ old('_rental_id') }}"
+        data-old-vendor-id="{{ old('vendor_id') }}"
+        data-old-stall-id="{{ old('stall_id') }}"
+        data-old-start-date="{{ old('start_date') }}"
+        data-old-end-date="{{ old('end_date') }}"
+        data-old-rent-amount="{{ old('rent_amount') }}"
+        data-old-billing-cycle="{{ old('billing_cycle') }}"
+        data-old-status="{{ old('status') }}">
+        <div class="app-modal-panel">
+            <div class="app-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="app-modal-icon bg-emerald-800">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </div>
+                    <div>
+                        <h2 id="editRentalTitle" class="m-0 text-base font-bold text-slate-900">Edit Rental Contract</h2>
+                        <p class="m-0 mt-0.5 text-xs text-slate-500">Update the vendor, stall assignment, dates, and financial terms.</p>
+                    </div>
+                </div>
+                <button type="button" class="app-modal-close" onclick="closeModal('editRentalModal')" aria-label="Close edit rental">&times;</button>
+            </div>
+
+            <form id="editRentalForm" method="POST" data-update-url-template="{{ route('rentals.update', ['rental' => '__rental__']) }}">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="_form" value="edit_rental">
+                <input type="hidden" name="_rental_id" id="edit_rental_id">
+                <div class="app-modal-body">
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Contract Number</span>
+                            <input type="text" id="edit_rental_contract_number" readonly>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Vendor <span class="text-rose-500">*</span></span>
+                            <select name="vendor_id" id="edit_rental_vendor_id" required>
+                                @foreach ($allVendors as $vendor)
+                                    <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Stall <span class="text-rose-500">*</span></span>
+                            <select name="stall_id" id="edit_rental_stall_id" required>
+                                @foreach ($stalls as $stall)
+                                    <option value="{{ $stall->id }}">{{ $stall->stall_number }} — {{ $stall->market_section }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Rental Rate (₱ / cycle) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="rent_amount" id="edit_rental_rent_amount" min="0" step="0.01" required>
+                        </label>
+                    </div>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Billing Cycle <span class="text-rose-500">*</span></span>
+                            <select name="billing_cycle" id="edit_rental_billing_cycle" required>
+                                @foreach (['Monthly', 'Quarterly', 'Bi-weekly', 'Weekly'] as $cycle)
+                                    <option value="{{ $cycle }}">{{ $cycle }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Contract Status <span class="text-rose-500">*</span></span>
+                            <select name="status" id="edit_rental_status" required>
+                                @foreach (['Active', 'Pending', 'Expired', 'Terminated', 'Inactive'] as $status)
+                                    <option value="{{ $status }}">{{ $status }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Start Date <span class="text-rose-500">*</span></span>
+                            <input type="date" name="start_date" id="edit_rental_start_date" required>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>End Date <span class="text-rose-500">*</span></span>
+                            <input type="date" name="end_date" id="edit_rental_end_date" required>
+                        </label>
+                    </div>
+                </div>
+                <div class="app-modal-footer">
+                    <button type="button" class="app-btn-cancel" onclick="closeModal('editRentalModal')">Cancel</button>
+                    <button type="submit" class="app-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteRentalModal" class="app-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteRentalTitle">
+        <div class="app-modal-panel max-w-md">
+            <div class="app-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="app-modal-icon bg-rose-600">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.6A1.6 1.6 0 003.2 21h17.6a1.6 1.6 0 001.4-2.4L13.7 3.9a2 2 0 00-3.4 0z" /></svg>
+                    </div>
+                    <div>
+                        <h2 id="deleteRentalTitle" class="m-0 text-base font-bold text-slate-900">Delete rental?</h2>
+                        <p class="m-0 mt-0.5 text-xs text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <button type="button" class="app-modal-close" onclick="closeModal('deleteRentalModal')" aria-label="Close delete confirmation">&times;</button>
+            </div>
+            <div class="app-modal-body">
+                <p class="m-0 text-sm text-slate-600">
+                    Are you sure you want to permanently delete rental contract <strong id="deleteRentalContractNumber" class="text-slate-900"></strong>?
+                </p>
+            </div>
+            <form id="deleteRentalForm" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="app-modal-footer sm:justify-end">
+                    <button type="button" class="app-btn-cancel" onclick="closeModal('deleteRentalModal')">Cancel</button>
+                    <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-800">
+                        Delete rental
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function openModal(modalId) {
             document.getElementById(modalId)?.classList.remove('hidden');
@@ -359,6 +471,25 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId)?.classList.add('hidden');
+        }
+
+        function openEditRentalModal(rental) {
+            const form = document.getElementById('editRentalForm');
+            const modal = document.getElementById('editRentalModal');
+            const isRetry = modal.dataset.oldRentalId === String(rental.id);
+
+            form.action = form.dataset.updateUrlTemplate.replace('__rental__', encodeURIComponent(rental.id));
+            document.getElementById('edit_rental_id').value = rental.id;
+            document.getElementById('edit_rental_contract_number').value = rental.contract_number;
+            document.getElementById('edit_rental_vendor_id').value = isRetry ? modal.dataset.oldVendorId : rental.vendor_id;
+            document.getElementById('edit_rental_stall_id').value = isRetry ? modal.dataset.oldStallId : rental.stall_id;
+            document.getElementById('edit_rental_rent_amount').value = isRetry ? modal.dataset.oldRentAmount : rental.rent_amount;
+            document.getElementById('edit_rental_billing_cycle').value = isRetry ? modal.dataset.oldBillingCycle : rental.billing_cycle;
+            document.getElementById('edit_rental_status').value = isRetry ? modal.dataset.oldStatus : rental.status;
+            document.getElementById('edit_rental_start_date').value = (isRetry ? modal.dataset.oldStartDate : rental.start_date).slice(0, 10);
+            document.getElementById('edit_rental_end_date').value = (isRetry ? modal.dataset.oldEndDate : rental.end_date).slice(0, 10);
+
+            openModal('editRentalModal');
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -395,6 +526,23 @@
             }
             startInput.addEventListener('change', updateDateLimit);
             updateDateLimit();
+
+            const editModal = document.getElementById('editRentalModal');
+            if (editModal.dataset.oldRentalId) {
+                const editButton = Array.from(document.querySelectorAll('[data-rental-id]'))
+                    .find(button => button.dataset.rentalId === editModal.dataset.oldRentalId);
+                if (editButton) {
+                    editButton.click();
+                }
+            }
+
+            document.querySelectorAll('[data-delete-url]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.getElementById('deleteRentalForm').action = button.dataset.deleteUrl;
+                    document.getElementById('deleteRentalContractNumber').textContent = button.dataset.contractNumber;
+                    openModal('deleteRentalModal');
+                });
+            });
         });
 
         function proceedToRentalConfirmation() {
@@ -415,7 +563,7 @@
 
             const rate = parseFloat(document.getElementById('rental_rent_amount').value) || 0;
             const deposit = rate * 2;
-            const contractNumber = document.getElementById('rental_contract_number').value;
+            const contractNumber = 'Assigned automatically after saving';
             const cycle = document.getElementById('rental_billing_cycle').value;
             const startDate = document.getElementById('rental_start_date').value;
             const endDate = document.getElementById('rental_end_date').value;

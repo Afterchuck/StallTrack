@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class Rental extends Model
@@ -15,6 +16,21 @@ class Rental extends Model
     use HasFactory;
 
     protected $fillable = ['vendor_id', 'stall_id', 'contract_number', 'start_date', 'end_date', 'rent_amount', 'billing_cycle', 'status'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Rental $rental): void {
+            if (filled($rental->contract_number)) {
+                return;
+            }
+
+            do {
+                $contractNumber = 'CTR-'.Str::upper(Str::random(8));
+            } while (static::where('contract_number', $contractNumber)->exists());
+
+            $rental->contract_number = $contractNumber;
+        });
+    }
 
     protected function casts(): array
     {

@@ -64,6 +64,10 @@
     .table-status.upcoming, .status.active, .vendor-status-pill.active { @apply bg-emerald-50 text-emerald-700; }
     .table-status.pending, .vendor-status-pill.pending { @apply bg-amber-50 text-amber-700; }
     .table-status.overdue, .status.inactive { @apply bg-rose-50 text-rose-700; }
+    .vendor-approval-select { @apply min-h-8 max-w-36 cursor-pointer rounded-full border px-2.5 py-1 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2; }
+    .vendor-approval-select:has(option[value="Pending"]:checked) { @apply border-amber-200 bg-amber-50 text-amber-700; }
+    .vendor-approval-select:has(option[value="Approved"]:checked) { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
+    .vendor-approval-select:has(option[value="Not approved"]:checked) { @apply border-rose-200 bg-rose-50 text-rose-700; }
     .table-pagination, .table-footer, .vendor-directory-footer { @apply flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500; }
 
     .page-heading { @apply mb-6; }

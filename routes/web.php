@@ -43,7 +43,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/vendors/{vendor}/edit', [AuthController::class, 'editVendor'])->name('vendors.edit');
     Route::patch('/vendors/{vendor}/approval', [AuthController::class, 'updateVendorApproval'])->name('vendors.approval.update');
     Route::get('/stalls', [AuthController::class, 'stalls'])->name('stalls');
-    Route::get('/stalls/{stall}', [AuthController::class, 'showStall'])->name('stalls.show');
     Route::post('/stalls', [AuthController::class, 'storeStall'])->name('stalls.store');
     Route::put('/stalls/{stall}', [AuthController::class, 'updateStall'])->name('stalls.update');
     Route::delete('/stalls/{stall}', [AuthController::class, 'destroyStall'])->name('stalls.destroy');

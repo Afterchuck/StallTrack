@@ -11,6 +11,7 @@ use App\Models\Stall;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
 
             return back()->withErrors([
-                'email' => 'Your vendor account has not been approved yet.',
+                'email' => 'Your vendor account has not been approved yet. Please wait at least 24 hours for admin approval.',
             ])->onlyInput('email');
         }
 
@@ -254,16 +255,8 @@ class AuthController extends Controller
         return view('admin.vendors.show', [
             'vendor' => $vendor,
             'payments' => $vendor->payments()->latest('paid_at')->get(),
-        ]);
-    }
-
-    public function showStall(Stall $stall): View
-    {
-        $stall->load(['rentals' => fn ($query) => $query->active()->with('vendor')]);
-
-        return view('admin.stalls.show', [
-            'stall' => $stall,
-            'rental' => $stall->rentals->first(),
+            'hasLinkedStall' => filled($vendor->stall_number) || $vendor->rentals()->active()->exists(),
+            'hasDeletionHistory' => $vendor->bills()->exists() || $vendor->payments()->exists() || $vendor->rentals()->exists(),
         ]);
     }
 
@@ -337,7 +330,6 @@ class AuthController extends Controller
                         'stall_id' => $newStall->id,
                     ],
                     [
-                        'contract_number' => 'RNT-'.str_replace('-', '', (string) $newStall->stall_number).'-'.$vendor->id,
                         'start_date' => $vendor->contract_start_date,
                         'end_date' => $vendor->contract_end_date,
                         'rent_amount' => $vendor->monthly_rent,
@@ -351,6 +343,10 @@ class AuthController extends Controller
         });
 
         $this->recordActivity('updated', $vendor, "Updated vendor {$vendor->name}.");
+
+        if ($request->input('_form') === 'edit_vendor_modal') {
+            return redirect()->route('vendors.index')->with('success', 'Vendor details and linked payment records updated.');
+        }
 
         return redirect()->route('vendors.show', $vendor)->with('success', 'Vendor details and linked payment records updated.');
     }
@@ -381,17 +377,16 @@ class AuthController extends Controller
         DB::transaction(function () use ($vendor): void {
             $vendor = Vendor::query()->lockForUpdate()->findOrFail($vendor->id);
 
+            if ($vendor->stall_number !== null || $vendor->rentals()->active()->exists()) {
+                throw ValidationException::withMessages([
+                    'vendor' => 'This vendor is still linked to a stall. Unassign the vendor from the stall before deleting the account.',
+                ]);
+            }
+
             if ($vendor->bills()->exists() || $vendor->payments()->exists() || $vendor->rentals()->exists()) {
                 throw ValidationException::withMessages([
                     'vendor' => 'This vendor has rental or payment history and cannot be deleted. Set the vendor to inactive instead.',
                 ]);
-            }
-
-            if ($vendor->stall_number !== null) {
-                $stall = Stall::query()->where('stall_number', $vendor->stall_number)->lockForUpdate()->first();
-                if ($stall !== null && ! Rental::query()->active()->where('stall_id', $stall->id)->exists()) {
-                    $stall->update(['status' => 'Available']);
-                }
             }
 
             $vendor->user()->where('role', 'vendor')->delete();
@@ -483,11 +478,13 @@ class AuthController extends Controller
             ]);
         }
 
+        $vendors->getCollection()->loadCount(['bills', 'payments', 'rentals']);
+
         return view('admin.vendors.index', [
-            'vendors' => $vendors->loadCount(['bills', 'payments', 'rentals']),
+            'vendors' => $vendors,
             'pendingApplications' => Vendor::where('approval_status', 'Pending')->count(),
             'sections' => Vendor::whereNotNull('market_section')->distinct()->orderBy('market_section')->pluck('market_section'),
-            'availableStalls' => Stall::where('status', 'Available')->orderBy('stall_number')->get(),
+            'editableStalls' => Stall::orderBy('stall_number')->get(),
         ]);
     }
 
@@ -533,7 +530,7 @@ class AuthController extends Controller
     public function storeStall(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'stall_number' => ['required', 'string', 'max:20', 'unique:stalls,stall_number'],
+            'stall_number' => ['nullable', 'string', 'max:20', 'unique:stalls,stall_number'],
             'market_section' => ['required', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:255'],
             'stall_type' => ['nullable', 'string', 'max:50'],
@@ -544,11 +541,41 @@ class AuthController extends Controller
         ]);
 
         $validated = $this->calculateStallRate($validated);
-        Stall::create($validated);
-        $stall = Stall::where('stall_number', $validated['stall_number'])->firstOrFail();
+        $stall = $this->createStallWithUniqueNumber($validated);
         $this->recordActivity('created', $stall, "Created stall {$stall->stall_number}.");
 
-        return redirect()->route('stalls')->with('success', "Stall {$validated['stall_number']} registered successfully.");
+        return redirect()->route('stalls')->with('success', "Stall {$stall->stall_number} registered successfully.");
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createStallWithUniqueNumber(array $attributes): Stall
+    {
+        $generateNumber = empty($attributes['stall_number']);
+        $nextNumber = (int) Stall::max('id') + 1;
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            if ($generateNumber) {
+                do {
+                    $attributes['stall_number'] = 'ST-'.str_pad((string) $nextNumber++, 6, '0', STR_PAD_LEFT);
+                } while (Stall::where('stall_number', $attributes['stall_number'])->exists());
+            }
+
+            try {
+                return DB::transaction(fn (): Stall => Stall::create($attributes));
+            } catch (UniqueConstraintViolationException) {
+                if (! $generateNumber) {
+                    throw ValidationException::withMessages([
+                        'stall_number' => 'This stall number is already in use. Please choose another number.',
+                    ]);
+                }
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'stall_number' => 'A unique stall number could not be assigned. Please try saving again.',
+        ]);
     }
 
     public function updateStall(Request $request, Stall $stall): RedirectResponse
@@ -647,6 +674,7 @@ class AuthController extends Controller
             'rentalCounts' => $rentalCounts,
             'expiringSoonCount' => Rental::expiringSoon()->count(),
             'vendors' => Vendor::whereDoesntHave('rentals', fn ($query) => $query->active())->orderBy('name')->get(),
+            'allVendors' => Vendor::orderBy('name')->get(),
             'stalls' => Stall::orderBy('stall_number')->get(),
             'availableStalls' => Stall::where('status', 'Available')
                 ->whereDoesntHave('rentals', fn ($query) => $query->active())
@@ -659,7 +687,6 @@ class AuthController extends Controller
         $validated = $request->validate([
             'vendor_id' => ['required', 'exists:vendors,id'],
             'stall_id' => ['required', 'exists:stalls,id'],
-            'contract_number' => ['required', 'string', 'max:50', 'unique:rentals,contract_number'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'rent_amount' => ['required', 'numeric', 'min:0'],
@@ -667,16 +694,14 @@ class AuthController extends Controller
             'status' => ['required', 'in:Active,Inactive,Pending'],
         ]);
 
-        $vendor = null;
-
-        DB::transaction(function () use ($validated, &$vendor): void {
+        $rental = DB::transaction(function () use ($validated): Rental {
             $stall = Stall::query()->lockForUpdate()->findOrFail($validated['stall_id']);
             $vendor = Vendor::query()->lockForUpdate()->findOrFail($validated['vendor_id']);
 
             $this->ensureStallAvailable($stall);
             $this->ensureVendorHasNoActiveRental($vendor);
 
-            Rental::create($validated);
+            $rental = Rental::create($validated);
 
             if ($validated['status'] === 'Active') {
                 $stall->update([
@@ -694,11 +719,13 @@ class AuthController extends Controller
                     'status' => 'Active',
                 ]);
             }
+
+            return $rental;
         });
 
-        $this->recordActivity('created', Rental::where('contract_number', $validated['contract_number'])->first(), "Created rental contract {$validated['contract_number']}.");
+        $this->recordActivity('created', $rental, "Created rental contract {$rental->contract_number}.");
 
-        return redirect()->route('rentals')->with('success', "Rental contract {$validated['contract_number']} executed successfully.");
+        return redirect()->route('rentals')->with('success', "Rental contract {$rental->contract_number} executed successfully.");
     }
 
     public function updateRental(Request $request, Rental $rental): RedirectResponse
@@ -706,12 +733,11 @@ class AuthController extends Controller
         $validated = $request->validate([
             'vendor_id' => ['required', 'exists:vendors,id'],
             'stall_id' => ['required', 'exists:stalls,id'],
-            'contract_number' => ['required', 'string', 'max:50', 'unique:rentals,contract_number,'.$rental->id],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'rent_amount' => ['required', 'numeric', 'min:0'],
             'billing_cycle' => ['required', 'in:Monthly,Quarterly,Bi-weekly,Weekly'],
-            'status' => ['required', 'in:Active,Expired,Terminated,Pending'],
+            'status' => ['required', 'in:Active,Expired,Terminated,Pending,Inactive'],
         ]);
 
         DB::transaction(function () use ($validated, $rental): void {
@@ -788,16 +814,10 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'stall_number' => ['required', 'string', 'max:20', 'exists:stalls,stall_number'],
             'contact_number' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],
             'residential_address' => ['nullable', 'string', 'max:1000'],
             'market_section' => ['required', 'string', 'max:100'],
-            'monthly_rent' => ['required', 'numeric', 'min:0'],
-            'billing_cycle' => ['required', 'in:Monthly,Quarterly,Bi-weekly,Weekly'],
-            'contract_start_date' => ['required', 'date'],
-            'contract_end_date' => ['required', 'date', 'after_or_equal:contract_start_date'],
-            'status' => ['required', 'in:Active,Inactive'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4096,max_height=4096'],
         ]);
 
@@ -808,36 +828,9 @@ class AuthController extends Controller
             }
         }
 
-        $validated['contract_until'] = $validated['contract_end_date'];
         unset($validated['photo']);
-        $vendor = null;
-
-        DB::transaction(function () use ($validated, &$vendor): void {
-            $stall = Stall::query()
-                ->lockForUpdate()
-                ->where('stall_number', $validated['stall_number'])
-                ->firstOrFail();
-
-            if ($validated['status'] === 'Active') {
-                $this->ensureStallAvailable($stall);
-            }
-
-            $vendor = Vendor::create($validated);
-
-            if ($validated['status'] === 'Active') {
-                $stall->update(['status' => 'Occupied']);
-                Rental::create([
-                    'vendor_id' => $vendor->id,
-                    'stall_id' => $stall->id,
-                    'contract_number' => 'RNT-'.str_replace('-', '', (string) $stall->stall_number).'-'.$vendor->id,
-                    'start_date' => $vendor->contract_start_date,
-                    'end_date' => $vendor->contract_end_date,
-                    'rent_amount' => $vendor->monthly_rent,
-                    'billing_cycle' => $vendor->billing_cycle,
-                    'status' => 'Active',
-                ]);
-            }
-        });
+        $validated['status'] = 'Pending';
+        $vendor = Vendor::create($validated);
 
         $this->recordActivity('created', $vendor, "Created vendor {$vendor->name}.");
 

@@ -73,6 +73,57 @@ class VendorManagementTest extends TestCase
         $this->assertDatabaseHas('payments', ['vendor_name' => 'Vendor Updated', 'receipt_number' => 'OR-100001']);
     }
 
+    public function test_admin_can_edit_a_vendor_from_the_management_popup(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $stall = Stall::create([
+            'stall_number' => 'M-01',
+            'market_section' => 'Fresh Produce',
+            'status' => 'Available',
+            'monthly_rate' => 1800,
+        ]);
+        $vendor = Vendor::create(['name' => 'Popup Vendor', 'status' => 'Inactive']);
+
+        $this->actingAs($admin)->get(route('vendors.index'))
+            ->assertSee('id="editVendorModal"', false)
+            ->assertSee('id="editVendorForm"', false)
+            ->assertSee('data-vendor-name="Popup Vendor"', false)
+            ->assertSee('onclick="openEditVendorModal(this)"', false)
+            ->assertDontSee('href="'.route('vendors.show', $vendor).'"', false)
+            ->assertDontSee(route('vendors.edit', $vendor))
+            ->assertDontSee('>Details</a>', false);
+
+        $this->put(route('vendors.update', $vendor), [
+            '_form' => 'edit_vendor_modal',
+            '_vendor_id' => $vendor->id,
+            'name' => 'Updated Popup Vendor',
+            'email' => 'popup-vendor@example.com',
+            'contact_number' => '09170000000',
+            'residential_address' => 'Market Road',
+            'stall_number' => $stall->stall_number,
+            'market_section' => 'Fresh Produce',
+            'monthly_rent' => 1800,
+            'billing_cycle' => 'Monthly',
+            'contract_start_date' => today()->toDateString(),
+            'contract_end_date' => today()->addYear()->toDateString(),
+            'status' => 'Active',
+        ])->assertRedirect(route('vendors.index'));
+
+        $this->assertDatabaseHas('vendors', [
+            'id' => $vendor->id,
+            'name' => 'Updated Popup Vendor',
+            'email' => 'popup-vendor@example.com',
+            'stall_number' => $stall->stall_number,
+            'status' => 'Active',
+        ]);
+        $this->assertDatabaseHas('stalls', ['id' => $stall->id, 'status' => 'Occupied']);
+        $this->assertDatabaseHas('rentals', [
+            'vendor_id' => $vendor->id,
+            'stall_id' => $stall->id,
+            'status' => 'Active',
+        ]);
+    }
+
     public function test_admin_can_open_stall_details_and_use_matching_details_and_edit_actions(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
@@ -88,22 +139,18 @@ class VendorManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('stalls'))
-            ->assertSee(route('stalls.show', $stall))
+            ->assertDontSee('>Details<', false)
             ->assertSee('Rate per square meter')
             ->assertSee('Length × Width')
             ->assertSee('stall_rate_per_sqm_input')
-            ->assertSee('Edit stall C-12');
-
-        $this->get(route('stalls.show', $stall))
-            ->assertOk()
-            ->assertSee('Stall C-12')
-            ->assertSee('Building C')
-            ->assertSee('Dry Goods');
+            ->assertSee('Edit stall C-12')
+            ->assertSee('id="editStallModal"', false);
 
         $this->get(route('vendors.index'))
-            ->assertSee('Rate per square meter')
-            ->assertSee('stall_rate_per_sqm_input')
-            ->assertSee('stall_rate_formula');
+            ->assertDontSee('Rate per square meter')
+            ->assertDontSee('stall_rate_per_sqm_input')
+            ->assertDontSee('stall_rate_formula')
+            ->assertSee('id="editVendorModal"', false);
     }
 
     public function test_admin_can_delete_a_vendor_without_rental_or_payment_history(): void
@@ -111,11 +158,48 @@ class VendorManagementTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $vendor = Vendor::create(['name' => 'Unlinked Vendor', 'status' => 'Inactive']);
 
-        $this->actingAs($admin)->delete(route('vendors.destroy', $vendor))
+        $this->actingAs($admin)->get(route('vendors.show', $vendor))
+            ->assertSee('id="deleteVendorModal"', false)
+            ->assertSee('Delete vendor account?', false)
+            ->assertSee('Permanently delete', false);
+
+        $this->get(route('vendors.index'))
+            ->assertSee('id="deleteVendorModal"', false)
+            ->assertSee('id="deleteVendorForm"', false)
+            ->assertSee('data-delete-url="'.route('vendors.destroy', $vendor).'"', false)
+            ->assertSee('data-vendor-name="Unlinked Vendor"', false)
+            ->assertDontSee('onsubmit="return confirm(', false);
+
+        $this->delete(route('vendors.destroy', $vendor))
             ->assertRedirect(route('vendors.index'))
             ->assertSessionHas('success', 'Vendor account deleted.');
 
         $this->assertDatabaseMissing('vendors', ['id' => $vendor->id]);
+    }
+
+    public function test_vendor_delete_is_disabled_and_rejected_while_a_stall_is_assigned(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendor = Vendor::create([
+            'name' => 'Assigned Vendor',
+            'stall_number' => 'A-02',
+            'status' => 'Active',
+        ]);
+
+        $this->actingAs($admin)->get(route('vendors.show', $vendor))
+            ->assertSee('This vendor is linked to stall A-02.', false)
+            ->assertSee('id="vendor-delete-disabled"', false)
+            ->assertDontSee('id="deleteVendorModal"', false);
+        $this->get(route('vendors.index'))
+            ->assertSee('Cannot delete vendor Assigned Vendor because it is linked to a stall or has rental or payment history', false);
+
+        $this->from(route('vendors.show', $vendor))->delete(route('vendors.destroy', $vendor))
+            ->assertSessionHasErrors([
+                'vendor' => 'This vendor is still linked to a stall. Unassign the vendor from the stall before deleting the account.',
+            ]);
+
+        $this->assertModelExists($vendor);
+        $this->assertDatabaseHas('vendors', ['id' => $vendor->id, 'stall_number' => 'A-02']);
     }
 
     public function test_admin_cannot_delete_a_vendor_with_direct_payment_history(): void

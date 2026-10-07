@@ -18,10 +18,6 @@
                 </small>
             </a>
 
-            <a class="mx-4 mt-6 flex items-center justify-center gap-2 rounded-md bg-[#087e69] px-3 py-3 text-sm font-semibold tracking-wide text-white no-underline transition hover:bg-[#066b59]" href="{{ route('vendor.payments') }}">
-                View payment history
-            </a>
-
             <nav class="grid gap-1 px-4 py-5" aria-label="Vendor navigation">
                 @foreach ([
                     ['overview', 'Overview', route('vendor.dashboard'), 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
@@ -30,8 +26,9 @@
                     ['support', 'Help & support', route('vendor.support'), 'M12 21a9 9 0 1 0-9-9 9 9 0 0 0 9 9ZM9.5 9a2.5 2.5 0 1 1 4.25 1.79c-.85.77-1.75 1.2-1.75 2.71M12 17h.01'],
                 ] as [$key, $label, $url, $icon])
                     <a @class([
-                        'flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium text-slate-300 no-underline transition hover:bg-white/10 hover:text-white',
+                        'flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium text-slate-300 no-underline transition',
                         'bg-[#087e69] font-semibold text-white shadow-[inset_-3px_0_0_#08d29c]' => $active === $key,
+                        'hover:bg-white/10 hover:text-white' => $active !== $key,
                     ]) href="{{ $url }}">
                         <svg @class(['size-4 shrink-0 fill-none stroke-current stroke-[1.7]', 'fill-current stroke-none' => $active === $key]) viewBox="0 0 24 24" aria-hidden="true">
                             <path d="{{ $icon }}" />
@@ -87,8 +84,9 @@
             <nav class="flex gap-2 overflow-x-auto border-b border-slate-200 bg-[#0d1a31] px-4 py-2 md:hidden" aria-label="Mobile vendor navigation">
                 @foreach ([['overview', 'Overview', route('vendor.dashboard')], ['stall', 'My stall', route('vendor.stall')], ['payments', 'Payments', route('vendor.payments')], ['support', 'Help & support', route('vendor.support')]] as [$key, $label, $url])
                     <a @class([
-                        'flex min-h-11 shrink-0 items-center rounded-md px-3 py-2 text-xs font-semibold text-slate-300 no-underline',
+                        'flex min-h-11 shrink-0 items-center rounded-md px-3 py-2 text-xs font-semibold text-slate-300 no-underline transition',
                         'bg-[#087e69] text-white' => $active === $key,
+                        'hover:bg-white/10 hover:text-white' => $active !== $key,
                     ]) href="{{ $url }}">{{ $label }}</a>
                 @endforeach
             </nav>

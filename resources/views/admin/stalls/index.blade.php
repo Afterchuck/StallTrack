@@ -67,30 +67,27 @@
                             <td><span class="vendor-status-pill {{ $stall->status === 'Available' ? 'active' : 'pending' }}">{{ $stall->status }}</span></td>
                             <td class="whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <a
-                                        class="inline-flex items-center gap-1.5 rounded border border-transparent px-2 py-1 text-xs font-semibold text-emerald-700 no-underline hover:bg-emerald-50"
-                                        href="{{ route('stalls.show', $stall) }}"
-                                    >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4h7l5 5v11H8a2 2 0 01-2-2V6a2 2 0 012-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4v5h5M10 14h6M10 17h6" /></svg>
-                                        Details
-                                    </a>
                                     <button
                                         type="button"
                                         class="inline-flex size-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-500 transition hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
-                                        onclick='openEditStallModal(@json($stall))'
+                                        onclick='openEditStallModal(@json($stall), "{{ addslashes($rental?->vendor?->name ?? 'Vacant') }}")'
+                                        data-stall-id="{{ $stall->id }}"
                                         aria-label="Edit stall {{ $stall->stall_number }}"
                                         title="Edit stall"
                                     >
                                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </button>
                                     @if ($stall->rentals_count === 0)
-                                        <form method="POST" action="{{ route('stalls.destroy', $stall) }}" onsubmit="return confirm('Delete this stall? This action cannot be undone.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50" aria-label="Delete stall {{ $stall->stall_number }}" title="Delete stall">
-                                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50"
+                                            data-delete-url="{{ route('stalls.destroy', $stall) }}"
+                                            data-stall-number="{{ $stall->stall_number }}"
+                                            aria-label="Delete stall {{ $stall->stall_number }}"
+                                            title="Delete stall"
+                                        >
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        </button>
                                     @else
                                         <button type="button" disabled class="inline-flex size-8 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete stall {{ $stall->stall_number }} because it has rental history" title="Stalls with rental history cannot be deleted">
                                             <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
@@ -130,8 +127,8 @@
                 <div class="app-modal-body">
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
-                            <span>Stall Number <span class="text-rose-500">*</span></span>
-                            <input type="text" name="stall_number" id="stall_number_input" placeholder="e.g. E-101" required>
+                            <span>Stall Number</span>
+                            <input type="text" id="stall_number_input" value="Auto-generated on save" readonly>
                         </label>
                         <label class="app-modal-field">
                             <span>Market Section <span class="text-rose-500">*</span></span>
@@ -180,7 +177,7 @@
                             <span>Rate per square meter (₱) <span class="text-rose-500">*</span></span>
                             <div class="relative">
                                 <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                <input type="number" id="stall_rate_per_sqm_input" min="0" max="99999999.99" step="0.01" class="pl-8" placeholder="Enter rate per m²" required>
+                                <input type="number" name="rate_per_sqm" id="stall_rate_per_sqm_input" min="0" max="99999999.99" step="0.01" class="pl-8" placeholder="Enter rate per m²" required>
                             </div>
                         </label>
                         <label class="app-modal-field">
@@ -281,7 +278,16 @@
     </div>
 
     {{-- EDIT STALL MODAL POP-UP WINDOW --}}
-    <div id="editStallModal" class="app-modal-overlay hidden">
+    <div id="editStallModal" class="app-modal-overlay {{ $errors->any() && old('_form') === 'edit_stall_modal' ? '' : 'hidden' }}" role="dialog" aria-modal="true" aria-labelledby="editStallTitle"
+        data-old-stall-id="{{ old('_stall_id') }}"
+        data-old-stall-number="{{ old('stall_number') }}"
+        data-old-market-section="{{ old('market_section') }}"
+        data-old-location="{{ old('location') }}"
+        data-old-stall-type="{{ old('stall_type') }}"
+        data-old-length="{{ old('length_m') }}"
+        data-old-width="{{ old('width_m') }}"
+        data-old-rate-per-sqm="{{ old('rate_per_sqm') }}"
+        data-old-status="{{ old('status') }}">
         <div class="app-modal-panel">
             <div class="app-modal-header">
                 <div class="flex items-center gap-3">
@@ -289,17 +295,24 @@
                         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </div>
                     <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Edit Stall Details</h2>
+                        <h2 id="editStallTitle" class="text-base font-bold text-slate-900 m-0">Edit Stall Details</h2>
                         <p class="text-xs text-slate-500 m-0 mt-0.5">Modify unit specifications, status, and monthly rental pricing</p>
                     </div>
                 </div>
-                <button type="button" class="app-modal-close" onclick="closeModal('editStallModal')">&times;</button>
+                <button type="button" class="app-modal-close" onclick="closeModal('editStallModal')" aria-label="Close edit stall">&times;</button>
             </div>
 
-            <form id="editStallForm" method="POST">
+            <form id="editStallForm" method="POST" data-update-url-template="{{ url('/stalls') }}/__stall__">
                 @csrf
                 @method('PUT')
-                <div class="app-modal-body">
+                <input type="hidden" name="_form" value="edit_stall_modal">
+                <input type="hidden" name="_stall_id" id="edit_stall_id_input" value="{{ old('_stall_id') }}">
+                <div class="app-modal-body space-y-4">
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
+                        <div>Assigned Vendor: <strong id="edit_stall_vendor" class="text-slate-800">Vacant</strong></div>
+                        <div>Floor Area: <strong id="edit_stall_area_display" class="text-slate-800">0.00 m²</strong></div>
+                    </div>
+
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
                             <span>Stall Number <span class="text-rose-500">*</span></span>
@@ -382,6 +395,40 @@
         </div>
     </div>
 
+    <div id="deleteStallModal" class="app-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteStallTitle">
+        <div class="app-modal-panel max-w-md">
+            <div class="app-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="app-modal-icon bg-rose-600">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.6A1.6 1.6 0 003.2 21h17.6a1.6 1.6 0 001.4-2.4L13.7 3.9a2 2 0 00-3.4 0z" /></svg>
+                    </div>
+                    <div>
+                        <h2 id="deleteStallTitle" class="m-0 text-base font-bold text-slate-900">Delete stall?</h2>
+                        <p class="m-0 mt-0.5 text-xs text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <button type="button" class="app-modal-close" onclick="closeDeleteStallModal()" aria-label="Close delete confirmation">&times;</button>
+            </div>
+
+            <div class="app-modal-body">
+                <p class="m-0 text-sm text-slate-600">
+                    Are you sure you want to permanently delete stall <strong id="deleteStallNumber" class="text-slate-900"></strong>?
+                </p>
+            </div>
+
+            <form id="deleteStallForm" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="app-modal-footer sm:justify-end">
+                    <button type="button" class="app-btn-cancel" onclick="closeDeleteStallModal()">Cancel</button>
+                    <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-800">
+                        Delete stall
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function openModal(modalId) {
             document.getElementById(modalId)?.classList.remove('hidden');
@@ -391,16 +438,48 @@
             document.getElementById(modalId)?.classList.add('hidden');
         }
 
-        function openEditStallModal(stall) {
-            document.getElementById('editStallForm').action = `/stalls/${stall.id}`;
-            document.getElementById('edit_stall_number').value = stall.stall_number || '';
-            document.getElementById('edit_stall_section').value = stall.market_section || 'Fresh Produce';
-            document.getElementById('edit_stall_location').value = stall.location || '';
-            document.getElementById('edit_stall_type').value = stall.stall_type || 'Standard';
-            document.getElementById('edit_stall_length').value = stall.length_m || '';
-            document.getElementById('edit_stall_width').value = stall.width_m || '';
-            document.getElementById('edit_stall_rate_per_sqm').value = stall.rate_per_sqm || '';
-            document.getElementById('edit_stall_status').value = stall.status || 'Available';
+        function closeDeleteStallModal() {
+            closeModal('deleteStallModal');
+        }
+
+        document.querySelectorAll('[data-delete-url]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                document.getElementById('deleteStallForm').action = button.dataset.deleteUrl;
+                document.getElementById('deleteStallNumber').textContent = button.dataset.stallNumber;
+                openModal('deleteStallModal');
+            });
+        });
+
+        document.getElementById('deleteStallModal').addEventListener('click', function (event) {
+            if (event.target === this) {
+                closeDeleteStallModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeDeleteStallModal();
+            }
+        });
+
+        function openEditStallModal(stall, vendorName) {
+            const form = document.getElementById('editStallForm');
+            const modal = document.getElementById('editStallModal');
+            const isRetry = modal.dataset.oldStallId === String(stall.id);
+
+            form.action = form.dataset.updateUrlTemplate
+                ? form.dataset.updateUrlTemplate.replace('__stall__', encodeURIComponent(stall.id))
+                : `/stalls/${stall.id}`;
+            document.getElementById('edit_stall_id_input').value = stall.id;
+            document.getElementById('edit_stall_vendor').textContent = vendorName || 'Vacant';
+            document.getElementById('edit_stall_number').value = isRetry ? modal.dataset.oldStallNumber : (stall.stall_number || '');
+            document.getElementById('edit_stall_section').value = isRetry ? modal.dataset.oldMarketSection : (stall.market_section || 'Fresh Produce');
+            document.getElementById('edit_stall_location').value = isRetry ? modal.dataset.oldLocation : (stall.location || '');
+            document.getElementById('edit_stall_type').value = isRetry ? modal.dataset.oldStallType : (stall.stall_type || 'Standard');
+            document.getElementById('edit_stall_length').value = isRetry ? modal.dataset.oldLength : (stall.length_m || '');
+            document.getElementById('edit_stall_width').value = isRetry ? modal.dataset.oldWidth : (stall.width_m || '');
+            document.getElementById('edit_stall_rate_per_sqm').value = isRetry ? modal.dataset.oldRatePerSqm : (stall.rate_per_sqm || '');
+            document.getElementById('edit_stall_status').value = isRetry ? modal.dataset.oldStatus : (stall.status || 'Available');
             updateStallRate('edit_stall_length', 'edit_stall_width', 'edit_stall_rate_per_sqm', 'edit_stall_rate', 'edit_stall_area_output');
             openModal('editStallModal');
         }
@@ -413,6 +492,10 @@
             const monthlyRate = area * rate;
 
             document.getElementById(areaId).textContent = area.toFixed(2);
+            const areaDisplay = document.getElementById('edit_stall_area_display');
+            if (areaDisplay && areaId === 'edit_stall_area_output') {
+                areaDisplay.textContent = (area > 0 ? area.toFixed(2) : '0.00') + ' m²';
+            }
             document.getElementById(totalId).value = area > 0 && document.getElementById(rateId).value !== ''
                 ? monthlyRate.toFixed(2)
                 : '';
@@ -429,6 +512,15 @@
                     });
                 });
             });
+
+            const editModal = document.getElementById('editStallModal');
+            if (editModal && editModal.dataset.oldStallId) {
+                const editButton = Array.from(document.querySelectorAll('[data-stall-id]'))
+                    .find(button => button.dataset.stallId === editModal.dataset.oldStallId);
+                if (editButton) {
+                    editButton.click();
+                }
+            }
         });
 
         function proceedToStallConfirmation() {
@@ -447,7 +539,7 @@
             const rate = parseFloat(document.getElementById('stall_rate_input').value) || 0;
             const status = document.getElementById('stall_status_input').value;
 
-            document.getElementById('cs_stall_number').textContent = `Stall ${stallNumber}`;
+            document.getElementById('cs_stall_number').textContent = stallNumber;
             document.getElementById('cs_section').textContent = `Section: ${section}`;
             document.getElementById('cs_details').textContent = `Type: ${type} · ${length}m × ${width}m (${(length * width).toFixed(2)} m²)`;
             document.getElementById('cs_location').textContent = `Location: ${location}`;

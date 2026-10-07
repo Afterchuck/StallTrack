@@ -26,14 +26,6 @@
     </section>
 
     <div class="vendor-management-actions mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" class="app-btn-primary cursor-pointer text-sm font-semibold inline-flex items-center gap-2" onclick="openModal('addVendorModal')">
-            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-            + Add Vendor
-        </button>
-        <button type="button" class="app-btn-secondary cursor-pointer text-sm font-semibold inline-flex items-center gap-2" onclick="openModal('addStallModal')">
-            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-            + Add Stall
-        </button>
         <a class="vendor-secondary-action inline-flex items-center gap-1.5" href="{{ route('reports') }}">
             <svg class="size-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Export Inventory & Leases
@@ -75,48 +67,56 @@
                             <td>{{ $vendor->market_section ?: 'Not assigned' }}</td>
                             <td>{{ $vendor->monthly_rent ? '₱'.number_format((float) $vendor->monthly_rent, 2) : 'Not set' }}</td>
                             <td>
-                                <span class="vendor-status-pill {{ $vendor->status === 'Active' ? 'active' : 'pending' }}">{{ $vendor->status }}</span>
                                 @if ($vendor->user?->role === 'vendor')
-                                    <form method="POST" action="{{ route('vendors.approval.update', $vendor) }}" class="mt-2 flex items-center gap-1.5">
+                                    <form method="POST" action="{{ route('vendors.approval.update', $vendor) }}" class="flex items-center gap-1.5">
                                         @csrf
                                         @method('PATCH')
                                         <label class="sr-only" for="approval_status_{{ $vendor->id }}">Account approval for {{ $vendor->name }}</label>
-                                        <select id="approval_status_{{ $vendor->id }}" name="approval_status" class="max-w-32 rounded border border-slate-300 bg-white px-2 py-1 text-xs">
+                                        <select id="approval_status_{{ $vendor->id }}" name="approval_status" class="vendor-approval-select">
                                             <option value="Pending" @selected($vendor->approval_status === 'Pending')>Pending</option>
                                             <option value="Approved" @selected($vendor->approval_status === 'Approved')>Approved</option>
                                             <option value="Not approved" @selected($vendor->approval_status === 'Not approved')>Not approved</option>
                                         </select>
                                         <button class="min-h-8 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2" type="submit">Save</button>
                                     </form>
+                                @else
+                                    <span class="vendor-status-pill {{ $vendor->status === 'Active' ? 'active' : 'pending' }}">{{ $vendor->status }}</span>
                                 @endif
                             </td>
                             <td class="whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <a
-                                        class="inline-flex items-center gap-1.5 rounded border border-transparent px-2 py-1 text-xs font-semibold text-emerald-700 no-underline hover:bg-emerald-50"
-                                        href="{{ route('vendors.show', $vendor) }}"
-                                    >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4h7l5 5v11H8a2 2 0 01-2-2V6a2 2 0 012-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4v5h5M10 14h6M10 17h6" /></svg>
-                                        Details
-                                    </a>
-                                    <a
-                                        class="inline-flex size-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-500 no-underline hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
-                                        href="{{ route('vendors.edit', $vendor) }}"
+                                    <button
+                                        type="button"
+                                        class="inline-flex size-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-500 hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
+                                        onclick="openEditVendorModal(this)"
+                                        data-vendor-id="{{ $vendor->id }}"
+                                        data-vendor-name="{{ $vendor->name }}"
+                                        data-vendor-email="{{ $vendor->email }}"
+                                        data-vendor-contact-number="{{ $vendor->contact_number }}"
+                                        data-vendor-residential-address="{{ $vendor->residential_address }}"
+                                        data-vendor-stall-number="{{ $vendor->stall_number }}"
+                                        data-vendor-market-section="{{ $vendor->market_section }}"
+                                        data-vendor-monthly-rent="{{ $vendor->monthly_rent }}"
+                                        data-vendor-billing-cycle="{{ $vendor->billing_cycle }}"
+                                        data-vendor-contract-start-date="{{ $vendor->contract_start_date?->toDateString() }}"
+                                        data-vendor-contract-end-date="{{ $vendor->contract_end_date?->toDateString() }}"
+                                        data-vendor-status="{{ $vendor->status }}"
                                         aria-label="Edit {{ $vendor->name }}"
                                         title="Edit vendor"
                                     >
                                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </a>
-                                    @if ($vendor->bills_count === 0 && $vendor->payments_count === 0 && $vendor->rentals_count === 0)
-                                        <form method="POST" action="{{ route('vendors.destroy', $vendor) }}" onsubmit="return confirm('Delete this vendor? This action cannot be undone.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50" aria-label="Delete vendor {{ $vendor->name }}" title="Delete vendor">
-                                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
-                                            </button>
-                                        </form>
+                                    </button>
+                                    @if ($vendor->stall_number === null && $vendor->bills_count === 0 && $vendor->payments_count === 0 && $vendor->rentals_count === 0)
+                                        <button type="button"
+                                            class="inline-flex size-8 items-center justify-center rounded border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50"
+                                            data-delete-url="{{ route('vendors.destroy', $vendor) }}"
+                                            data-vendor-name="{{ $vendor->name }}"
+                                            aria-label="Delete vendor {{ $vendor->name }}"
+                                            title="Delete vendor">
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
+                                        </button>
                                     @else
-                                        <button type="button" disabled class="inline-flex size-8 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete vendor {{ $vendor->name }} because it has rental or payment history" title="Vendors with rental or payment history cannot be deleted">
+                                        <button type="button" disabled class="inline-flex size-8 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-300" aria-label="Cannot delete vendor {{ $vendor->name }} because it is linked to a stall or has rental or payment history" title="Unassign the vendor from any stall and retain accounts with rental or payment history">
                                             <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12" /></svg>
                                         </button>
                                     @endif
@@ -132,369 +132,154 @@
         <div class="vendor-directory-footer">{{ $vendors->links() }}</div>
     </section>
 
-    {{-- MODAL 1: ADD VENDOR POP-UP WINDOW (Image 2) --}}
-    <div id="addVendorModal" class="app-modal-overlay hidden">
+    <div id="editVendorModal" class="app-modal-overlay {{ $errors->any() && old('_form') === 'edit_vendor_modal' ? '' : 'hidden' }}" role="dialog" aria-modal="true" aria-labelledby="editVendorTitle"
+        data-old-vendor-id="{{ old('_vendor_id') }}"
+        data-old-name="{{ old('name') }}"
+        data-old-email="{{ old('email') }}"
+        data-old-contact-number="{{ old('contact_number') }}"
+        data-old-residential-address="{{ old('residential_address') }}"
+        data-old-stall-number="{{ old('stall_number') }}"
+        data-old-market-section="{{ old('market_section') }}"
+        data-old-monthly-rent="{{ old('monthly_rent') }}"
+        data-old-billing-cycle="{{ old('billing_cycle') }}"
+        data-old-contract-start-date="{{ old('contract_start_date') }}"
+        data-old-contract-end-date="{{ old('contract_end_date') }}"
+        data-old-status="{{ old('status') }}">
         <div class="app-modal-panel">
             <div class="app-modal-header">
                 <div class="flex items-center gap-3">
                     <div class="app-modal-icon bg-emerald-800">
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828z" /></svg>
                     </div>
                     <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Add Vendor</h2>
-                        <p class="text-xs text-slate-500 m-0 mt-0.5">Digital enrollment, stall assignment, & contract terms</p>
+                        <h2 id="editVendorTitle" class="m-0 text-base font-bold text-slate-900">Edit Vendor</h2>
+                        <p class="m-0 mt-0.5 text-xs text-slate-500">Update vendor details and linked stall and rental information.</p>
                     </div>
                 </div>
-                <button type="button" class="app-modal-close" onclick="closeModal('addVendorModal')">&times;</button>
+                <button type="button" class="app-modal-close" onclick="closeModal('editVendorModal')" aria-label="Close edit vendor">&times;</button>
             </div>
 
-            <form id="addVendorForm" method="POST" action="{{ route('vendors.store') }}">
+            <form id="editVendorForm" method="POST" data-update-url-template="{{ route('vendors.update', ['vendor' => '__vendor__']) }}">
                 @csrf
+                @method('PUT')
+                <input type="hidden" name="_form" value="edit_vendor_modal">
+                <input type="hidden" name="_vendor_id" id="edit_vendor_id">
                 <div class="app-modal-body">
-                    {{-- 1. PERSONAL & TRADE DETAILS --}}
-                    <div>
-                        <span class="app-modal-section-title">1. Personal & Trade Details</span>
-                        <div class="space-y-3">
-                            <label class="app-modal-field">
-                                <span>Full Name <span class="text-rose-500">*</span></span>
-                                <input type="text" name="name" id="vendor_name" placeholder="e.g. Maria Clara Santos" required>
-                            </label>
-
-                            <div class="app-modal-grid">
-                                <label class="app-modal-field">
-                                    <span>Contact Number <span class="text-rose-500">*</span></span>
-                                    <input type="text" name="contact_number" id="vendor_contact" placeholder="+63 900 000 0000" required>
-                                </label>
-                                <label class="app-modal-field">
-                                    <span>Business / Product Type <span class="text-rose-500">*</span></span>
-                                    <input type="text" name="market_section" id="vendor_section" placeholder="e.g. Organic Greens, Bakery" required>
-                                </label>
-                            </div>
-
-                            <label class="app-modal-field">
-                                <span>Permanent Residential / Business Address <span class="text-rose-500">*</span></span>
-                                <textarea name="residential_address" id="vendor_address" rows="2" placeholder="Street, Barangay, City, Province" required></textarea>
-                            </label>
+                    @if ($errors->any() && old('_form') === 'edit_vendor_modal')
+                        <div class="form-alert" role="alert">
+                            <strong>Please correct the following:</strong>
+                            <ul>
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
-                    </div>
-
-                    {{-- 2. STALL ASSIGNMENT & FINANCIAL TERMS --}}
-                    <div>
-                        <span class="app-modal-section-title">2. Stall Assignment & Financial Terms</span>
-                        <div class="space-y-3">
-                            <div class="app-modal-grid">
-                                <label class="app-modal-field">
-                                    <span>Stall Assignment <span class="text-rose-500">*</span></span>
-                                    <select name="stall_number" id="vendor_stall_select" required>
-                                        <option value="">Select available stall</option>
-                                        @forelse ($availableStalls as $stall)
-                                            <option value="{{ $stall->stall_number }}"
-                                                data-section="{{ $stall->market_section }}"
-                                                data-rate="{{ $stall->monthly_rate }}"
-                                                data-type="{{ $stall->stall_type }}"
-                                                data-dimensions="{{ $stall->dimensions }}"
-                                                data-location="{{ $stall->location }}">
-                                                {{ $stall->stall_number }} - {{ $stall->market_section }} (₱{{ number_format((float) $stall->monthly_rate, 2) }})
-                                            </option>
-                                        @empty
-                                            <option value="" disabled>No available stalls in inventory</option>
-                                        @endforelse
-                                    </select>
-                                </label>
-                                <label class="app-modal-field">
-                                    <span>Rental Rate (₱ / cycle) <span class="text-rose-500">*</span></span>
-                                    <div class="relative">
-                                        <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                        <input type="number" step="0.01" min="0" name="monthly_rent" id="vendor_rent_rate" class="pl-8" placeholder="3500.00" required>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div class="app-modal-grid">
-                                <label class="app-modal-field">
-                                    <span>Contract Start Date <span class="text-rose-500">*</span></span>
-                                    <input type="date" name="contract_start_date" id="vendor_start_date" value="{{ date('Y-m-d') }}" required>
-                                </label>
-                                <label class="app-modal-field">
-                                    <span>Contract End Date <span class="text-rose-500">*</span></span>
-                                    <input type="date" name="contract_end_date" id="vendor_end_date" value="{{ date('Y-m-d', strtotime('+1 year')) }}" required>
-                                </label>
-                            </div>
-
-                            <div class="space-y-1.5">
-                                <span class="text-xs font-semibold text-slate-700 block">Payment Schedule <span class="text-rose-500">*</span></span>
-                                <div class="flex items-center gap-6 py-1">
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="radio" name="billing_cycle" value="Monthly" checked class="accent-emerald-700 size-4"> Monthly
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="radio" name="billing_cycle" value="Bi-weekly" class="accent-emerald-700 size-4"> Bi-weekly
-                                    </label>
-                                    <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                                        <input type="radio" name="billing_cycle" value="Weekly" class="accent-emerald-700 size-4"> Weekly
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="app-modal-banner">
-                                <span class="text-slate-700 font-medium">Security Deposit Required (2 mos):</span>
-                                <strong id="vendor_deposit_display" class="text-emerald-700 font-bold text-sm">₱0.00</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <input type="hidden" name="status" value="Active">
-
-                <div class="app-modal-footer">
-                    <button type="button" class="app-btn-cancel" onclick="closeModal('addVendorModal')">Cancel</button>
-                    <button type="button" class="app-btn-primary" onclick="proceedToVendorConfirmation()">Save & Generate Lease Agreement</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {{-- MODAL 2: CONFIRM VENDOR CONTRACT & LEASE EXECUTION POP-UP WINDOW (Image 3) --}}
-    <div id="confirmVendorModal" class="app-modal-overlay hidden">
-        <div class="app-modal-panel">
-            <div class="app-modal-header">
-                <div class="flex items-center gap-3">
-                    <div class="app-modal-icon bg-emerald-800">
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Confirm Contract & Lease Execution</h2>
-                        <p class="text-xs text-slate-500 m-0 mt-0.5">Please review the key terms before finalizing the tenancy agreement and activating billing.</p>
-                    </div>
-                </div>
-                <button type="button" class="app-modal-close" onclick="closeModal('confirmVendorModal')">&times;</button>
-            </div>
-
-            <div class="app-modal-body space-y-4">
-                <div class="app-confirm-card">
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Vendor & Stall Allocation</div>
-                        <div class="app-confirm-value">
-                            <span id="cv_vendor_name" class="font-bold text-slate-900 block"></span>
-                            <div class="flex flex-wrap items-center gap-2 mt-1">
-                                <span id="cv_stall_pill" class="app-stall-pill"></span>
-                                <span id="cv_stall_details" class="text-slate-500 text-xs"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Financial Terms</div>
-                        <div class="app-confirm-value">
-                            <span id="cv_rate_text" class="font-bold text-slate-900 block"></span>
-                            <span id="cv_deposit_text" class="text-slate-500 text-xs block"></span>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Lease Tenure</div>
-                        <div class="app-confirm-value">
-                            <span id="cv_tenure_dates" class="font-bold text-slate-900 block"></span>
-                            <span id="cv_duration_text" class="text-slate-500 text-xs block">12 Months Fixed Duration</span>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Billing Cycle</div>
-                        <div class="app-confirm-value">
-                            <span id="cv_billing_cycle" class="text-slate-800 text-xs font-semibold block">Monthly on the 1st of every month</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="app-notice-box">
-                    <svg class="size-5 text-sky-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p class="m-0 leading-relaxed text-slate-700">
-                        <strong>Important Notice:</strong> Confirming will immediately lock stall <span id="cv_notice_stall" class="font-bold text-slate-900"></span> from available market inventory, issue official digital lease agreement <span id="cv_notice_contract" class="font-bold text-emerald-800 font-mono"></span>, and dispatch account activation details to the vendor portal.
-                    </p>
-                </div>
-
-                <label class="flex items-start gap-2.5 text-xs font-medium text-slate-700 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <input type="checkbox" id="cv_agree_checkbox" class="accent-emerald-700 size-4 mt-0.5 shrink-0" onchange="toggleVendorSubmitButton()">
-                    <span>I confirm that the vendor credentials and stall specifications have been verified against municipal records.</span>
-                </label>
-            </div>
-
-            <div class="app-modal-footer">
-                <button type="button" class="app-btn-cancel" onclick="backToEditVendor()">Back to Edit</button>
-                <button type="button" id="cv_submit_btn" class="app-btn-primary opacity-50 cursor-not-allowed" disabled onclick="executeVendorSubmit()">
-                    Confirm & Execute Contract
-                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- MODAL 3: ADD STALL POP-UP WINDOW --}}
-    <div id="addStallModal" class="app-modal-overlay hidden">
-        <div class="app-modal-panel">
-            <div class="app-modal-header">
-                <div class="flex items-center gap-3">
-                    <div class="app-modal-icon bg-sky-700">
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Add Stall</h2>
-                        <p class="text-xs text-slate-500 m-0 mt-0.5">Register new market stall into inventory</p>
-                    </div>
-                </div>
-                <button type="button" class="app-modal-close" onclick="closeModal('addStallModal')">&times;</button>
-            </div>
-
-            <form id="addStallForm" method="POST" action="{{ route('stalls.store') }}">
-                @csrf
-                <div class="app-modal-body">
+                    @endif
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
-                            <span>Stall Number <span class="text-rose-500">*</span></span>
-                            <input type="text" name="stall_number" id="stall_number_input" placeholder="e.g. E-101" required>
+                            <span>Full Name <span class="text-rose-500">*</span></span>
+                            <input type="text" name="name" id="edit_vendor_name" maxlength="255" required>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Email</span>
+                            <input type="email" name="email" id="edit_vendor_email" maxlength="255">
+                        </label>
+                    </div>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Contact Number</span>
+                            <input type="text" name="contact_number" id="edit_vendor_contact_number" maxlength="30">
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Status <span class="text-rose-500">*</span></span>
+                            <select name="status" id="edit_vendor_status" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="app-modal-field">
+                        <span>Residential Address</span>
+                        <textarea name="residential_address" id="edit_vendor_residential_address" rows="2" maxlength="1000"></textarea>
+                    </label>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Linked Stall <span class="text-rose-500">*</span></span>
+                            <select name="stall_number" id="edit_vendor_stall_number" required>
+                                @foreach ($editableStalls as $stall)
+                                    <option value="{{ $stall->stall_number }}" data-status="{{ $stall->status }}" data-section="{{ $stall->market_section }}" data-rate="{{ $stall->monthly_rate }}">
+                                        {{ $stall->stall_number }} - {{ $stall->market_section }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </label>
                         <label class="app-modal-field">
                             <span>Market Section <span class="text-rose-500">*</span></span>
-                            <select name="market_section" id="stall_section_input" required>
-                                <option value="">Select market section</option>
-                                <option value="Fresh Produce">Fresh Produce</option>
-                                <option value="Dry Goods">Dry Goods</option>
-                                <option value="Food Court">Food Court</option>
-                                <option value="Wet Market">Wet Market</option>
-                                <option value="General Merchandise">General Merchandise</option>
-                                <option value="Apparel & Footwear">Apparel & Footwear</option>
+                            <input type="text" name="market_section" id="edit_vendor_market_section" maxlength="100" required>
+                        </label>
+                    </div>
+                    <div class="app-modal-grid">
+                        <label class="app-modal-field">
+                            <span>Rental Rate (₱) <span class="text-rose-500">*</span></span>
+                            <input type="number" name="monthly_rent" id="edit_vendor_monthly_rent" min="0" step="0.01" required>
+                        </label>
+                        <label class="app-modal-field">
+                            <span>Billing Cycle <span class="text-rose-500">*</span></span>
+                            <select name="billing_cycle" id="edit_vendor_billing_cycle" required>
+                                @foreach (['Monthly', 'Quarterly', 'Bi-weekly', 'Weekly'] as $cycle)
+                                    <option value="{{ $cycle }}">{{ $cycle }}</option>
+                                @endforeach
                             </select>
                         </label>
                     </div>
-
                     <div class="app-modal-grid">
                         <label class="app-modal-field">
-                            <span>Location / Building</span>
-                            <input type="text" name="location" id="stall_location_input" placeholder="e.g. Building E, Ground Floor">
+                            <span>Contract Start <span class="text-rose-500">*</span></span>
+                            <input type="date" name="contract_start_date" id="edit_vendor_contract_start_date" required>
                         </label>
                         <label class="app-modal-field">
-                            <span>Stall Type</span>
-                            <select name="stall_type" id="stall_type_input">
-                                <option value="Standard">Standard</option>
-                                <option value="Corner Stall">Corner Stall</option>
-                                <option value="Food Stall">Food Stall</option>
-                                <option value="Wet Stall">Wet Stall</option>
-                                <option value="Kiosk">Kiosk</option>
-                            </select>
+                            <span>Contract End <span class="text-rose-500">*</span></span>
+                            <input type="date" name="contract_end_date" id="edit_vendor_contract_end_date" required>
                         </label>
                     </div>
-
-                    <div class="app-modal-grid">
-                        <label class="app-modal-field">
-                            <span>Length (m) <span class="text-rose-500">*</span></span>
-                            <input type="number" name="length_m" id="stall_length_input" min="0.01" max="999999.99" step="0.01" placeholder="e.g. 3" required>
-                        </label>
-                        <label class="app-modal-field">
-                            <span>Width (m) <span class="text-rose-500">*</span></span>
-                            <input type="number" name="width_m" id="stall_width_input" min="0.01" max="999999.99" step="0.01" placeholder="e.g. 3" required>
-                        </label>
-                    </div>
-
-                    <div class="app-modal-grid">
-                        <label class="app-modal-field">
-                            <span>Rate per square meter (₱) <span class="text-rose-500">*</span></span>
-                            <div class="relative">
-                                <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                <input type="number" id="stall_rate_per_sqm_input" min="0" max="99999999.99" step="0.01" class="pl-8" placeholder="Enter rate per m²" required>
-                            </div>
-                        </label>
-                        <label class="app-modal-field">
-                            <span>Monthly Rate (₱)</span>
-                            <div class="relative">
-                                <span class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 font-semibold text-sm">₱</span>
-                                <input type="number" id="stall_rate_input" class="pl-8" readonly aria-describedby="stall_rate_formula">
-                            </div>
-                        </label>
-                    </div>
-                    <p id="stall_rate_formula" class="text-xs text-slate-500">Length × Width = <span id="stall_area_output">0.00</span> m² × Rate per m² = Monthly Rate</p>
-
-                    <label class="app-modal-field">
-                        <span>Initial Status <span class="text-rose-500">*</span></span>
-                        <select name="status" id="stall_status_input" required>
-                            <option value="Available" selected>Available (Ready for allocation)</option>
-                            <option value="Inactive">Inactive (Under maintenance)</option>
-                            <option value="Occupied">Occupied</option>
-                        </select>
-                    </label>
                 </div>
-
                 <div class="app-modal-footer">
-                    <button type="button" class="app-btn-cancel" onclick="closeModal('addStallModal')">Cancel</button>
-                    <button type="button" class="app-btn-primary" onclick="proceedToStallConfirmation()">Save & Review Stall</button>
+                    <button type="button" class="app-btn-cancel" onclick="closeModal('editVendorModal')">Cancel</button>
+                    <button type="submit" class="app-btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
-    {{-- MODAL 4: CONFIRM STALL REGISTRATION POP-UP WINDOW --}}
-    <div id="confirmStallModal" class="app-modal-overlay hidden">
-        <div class="app-modal-panel">
+    <div id="deleteVendorModal" class="app-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteVendorTitle">
+        <div class="app-modal-panel max-w-md">
             <div class="app-modal-header">
                 <div class="flex items-center gap-3">
-                    <div class="app-modal-icon bg-sky-700">
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="app-modal-icon bg-rose-600">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.6A1.6 1.6 0 003.2 21h17.6a1.6 1.6 0 001.4-2.4L13.7 3.9a2 2 0 00-3.4 0z" /></svg>
                     </div>
                     <div>
-                        <h2 class="text-base font-bold text-slate-900 m-0">Confirm Stall Registration</h2>
-                        <p class="text-xs text-slate-500 m-0 mt-0.5">Review stall inventory specifications before adding to database.</p>
+                        <h2 id="deleteVendorTitle" class="m-0 text-base font-bold text-slate-900">Delete vendor?</h2>
+                        <p class="m-0 mt-0.5 text-xs text-slate-500">This action cannot be undone.</p>
                     </div>
                 </div>
-                <button type="button" class="app-modal-close" onclick="closeModal('confirmStallModal')">&times;</button>
+                <button type="button" class="app-modal-close" onclick="closeModal('deleteVendorModal')" aria-label="Close delete confirmation">&times;</button>
             </div>
-
-            <div class="app-modal-body space-y-4">
-                <div class="app-confirm-card">
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Stall Identification</div>
-                        <div class="app-confirm-value">
-                            <span id="cs_stall_number" class="font-bold text-slate-900 block text-base"></span>
-                            <span id="cs_section" class="text-slate-500 text-xs block"></span>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Specifications</div>
-                        <div class="app-confirm-value">
-                            <span id="cs_details" class="text-slate-800 text-xs block"></span>
-                            <span id="cs_location" class="text-slate-500 text-xs block"></span>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Rental Rate</div>
-                        <div class="app-confirm-value">
-                            <span id="cs_rate" class="font-bold text-emerald-800 block text-sm"></span>
-                        </div>
-                    </div>
-                    <div class="app-confirm-row">
-                        <div class="app-confirm-label">Inventory Status</div>
-                        <div class="app-confirm-value">
-                            <span id="cs_status" class="app-stall-pill"></span>
-                        </div>
-                    </div>
+            <div class="app-modal-body">
+                <p class="m-0 text-sm text-slate-600">
+                    Permanently delete <strong id="deleteVendorName" class="text-slate-900"></strong>'s vendor profile and login?
+                </p>
+            </div>
+            <form id="deleteVendorForm" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="app-modal-footer sm:justify-end">
+                    <button type="button" class="app-btn-cancel" onclick="closeModal('deleteVendorModal')">Cancel</button>
+                    <button type="submit" class="min-h-11 cursor-pointer rounded-lg bg-rose-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-800">
+                        Delete vendor
+                    </button>
                 </div>
-
-                <div class="app-notice-box">
-                    <svg class="size-5 text-sky-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <p class="m-0 leading-relaxed text-slate-700">
-                        <strong>Important Notice:</strong> Registering will place this stall into the active municipal market database and make it selectable for vendor leasing contracts.
-                    </p>
-                </div>
-
-                <label class="flex items-start gap-2.5 text-xs font-medium text-slate-700 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <input type="checkbox" id="cs_agree_checkbox" class="accent-emerald-700 size-4 mt-0.5 shrink-0" onchange="toggleStallSubmitButton()">
-                    <span>I confirm that the stall dimensions and specifications have been verified against architectural blueprints.</span>
-                </label>
-            </div>
-
-            <div class="app-modal-footer">
-                <button type="button" class="app-btn-cancel" onclick="backToEditStall()">Back to Edit</button>
-                <button type="button" id="cs_submit_btn" class="app-btn-primary opacity-50 cursor-not-allowed" disabled onclick="executeStallSubmit()">
-                    Confirm & Register Stall
-                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                </button>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -508,180 +293,62 @@
             document.getElementById(modalId)?.classList.add('hidden');
         }
 
-        // Auto-fill and deposit calculation for Add Vendor
-        document.addEventListener('DOMContentLoaded', function () {
-            const stallSelect = document.getElementById('vendor_stall_select');
-            const rentInput = document.getElementById('vendor_rent_rate');
-            const sectionInput = document.getElementById('vendor_section');
-            const depositDisplay = document.getElementById('vendor_security_deposit_display');
+        function openEditVendorModal(button) {
+            const modal = document.getElementById('editVendorModal');
+            const form = document.getElementById('editVendorForm');
+            const isRetry = modal.dataset.oldVendorId === button.dataset.vendorId;
+            const fields = [
+                ['name', 'vendorName', 'oldName'],
+                ['email', 'vendorEmail', 'oldEmail'],
+                ['contact_number', 'vendorContactNumber', 'oldContactNumber'],
+                ['residential_address', 'vendorResidentialAddress', 'oldResidentialAddress'],
+                ['stall_number', 'vendorStallNumber', 'oldStallNumber'],
+                ['market_section', 'vendorMarketSection', 'oldMarketSection'],
+                ['monthly_rent', 'vendorMonthlyRent', 'oldMonthlyRent'],
+                ['billing_cycle', 'vendorBillingCycle', 'oldBillingCycle'],
+                ['contract_start_date', 'vendorContractStartDate', 'oldContractStartDate'],
+                ['contract_end_date', 'vendorContractEndDate', 'oldContractEndDate'],
+                ['status', 'vendorStatus', 'oldStatus'],
+            ];
 
-            function updateDeposit() {
-                const rate = parseFloat(rentInput.value) || 0;
-                const deposit = rate * 2;
-                depositDisplay.textContent = '₱' + deposit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
+            form.action = form.dataset.updateUrlTemplate.replace('__vendor__', encodeURIComponent(button.dataset.vendorId));
+            document.getElementById('edit_vendor_id').value = button.dataset.vendorId;
+            fields.forEach(([field, vendorData, oldData]) => {
+                document.getElementById(`edit_vendor_${field}`).value = isRetry
+                    ? modal.dataset[oldData]
+                    : button.dataset[vendorData] || '';
+            });
 
-            if (stallSelect) {
-                stallSelect.addEventListener('change', function () {
-                    const opt = this.options[this.selectedIndex];
-                    if (opt && opt.dataset) {
-                        if (opt.dataset.rate && rentInput) {
-                            rentInput.value = parseFloat(opt.dataset.rate).toFixed(2);
-                            updateDeposit();
-                        }
-                        if (opt.dataset.section && sectionInput && !sectionInput.value) {
-                            sectionInput.value = opt.dataset.section;
-                        }
-                    }
-                });
-            }
+            const stallSelect = document.getElementById('edit_vendor_stall_number');
+            Array.from(stallSelect.options).forEach(option => {
+                option.disabled = option.dataset.status !== 'Available' && option.value !== button.dataset.vendorStallNumber;
+            });
+            stallSelect.onchange = function () {
+                const selectedOption = this.options[this.selectedIndex];
+                document.getElementById('edit_vendor_market_section').value = selectedOption.dataset.section || '';
+                document.getElementById('edit_vendor_monthly_rent').value = selectedOption.dataset.rate || '';
+            };
 
-            if (rentInput) {
-                rentInput.addEventListener('input', updateDeposit);
-            }
-        });
-
-        // Add Vendor -> Confirmation Flow
-        function proceedToVendorConfirmation() {
-            const form = document.getElementById('addVendorForm');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            const name = document.getElementById('vendor_name').value;
-            const section = document.getElementById('vendor_section').value;
-            const stallSelect = document.getElementById('vendor_stall_select');
-            const stallOpt = stallSelect.options[stallSelect.selectedIndex];
-            const stallNumber = stallSelect.value;
-            const rate = parseFloat(document.getElementById('vendor_rent_rate').value) || 0;
-            const deposit = rate * 2;
-            const startDate = document.getElementById('vendor_start_date').value;
-            const endDate = document.getElementById('vendor_end_date').value;
-            const billingCycle = document.querySelector('input[name="billing_cycle"]:checked')?.value || 'Monthly';
-
-            // Populate confirmation details
-            document.getElementById('cv_vendor_name').textContent = `${name} (${section})`;
-            document.getElementById('cv_stall_pill').textContent = `Stall ${stallNumber}`;
-            const stallDim = stallOpt.dataset.dimensions ? ` · ${stallOpt.dataset.dimensions}` : '';
-            const stallLoc = stallOpt.dataset.location ? ` · ${stallOpt.dataset.location}` : '';
-            document.getElementById('cv_stall_details').textContent = `${stallOpt.dataset.section || section}${stallDim}${stallLoc}`;
-
-            const formattedRate = '₱' + rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const formattedDeposit = '₱' + deposit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById('cv_rate_text').textContent = `${formattedRate} / month`;
-            document.getElementById('cv_deposit_text').textContent = `Security Deposit: ${formattedDeposit} (2 months bond required)`;
-
-            const startFormatted = new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-            const endFormatted = new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-            document.getElementById('cv_tenure_dates').textContent = `${startFormatted} — ${endFormatted}`;
-
-            document.getElementById('cv_billing_cycle').textContent = `${billingCycle} on the 1st of every cycle`;
-            document.getElementById('cv_notice_stall').textContent = stallNumber;
-            const year = new Date().getFullYear();
-            const cleanStall = stallNumber.replace(/[^A-Za-z0-9]/g, '');
-            document.getElementById('cv_notice_contract').textContent = `CTR-${year}-${cleanStall}`;
-
-            // Reset agree checkbox and submit button
-            const agreeCheckbox = document.getElementById('cv_agree_checkbox');
-            agreeCheckbox.checked = false;
-            toggleVendorSubmitButton();
-
-            // Transition modals
-            closeModal('addVendorModal');
-            openModal('confirmVendorModal');
-        }
-
-        function backToEditVendor() {
-            closeModal('confirmVendorModal');
-            openModal('addVendorModal');
-        }
-
-        function toggleVendorSubmitButton() {
-            const checked = document.getElementById('cv_agree_checkbox').checked;
-            const submitBtn = document.getElementById('cv_submit_btn');
-            submitBtn.disabled = !checked;
-            if (checked) {
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            } else {
-                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
-        function executeVendorSubmit() {
-            document.getElementById('addVendorForm').submit();
-        }
-
-        function updateStallRate(lengthId, widthId, rateId, totalId, areaId) {
-            const length = Number(document.getElementById(lengthId).value);
-            const width = Number(document.getElementById(widthId).value);
-            const rate = Number(document.getElementById(rateId).value);
-            const area = length > 0 && width > 0 ? length * width : 0;
-
-            document.getElementById(areaId).textContent = area.toFixed(2);
-            document.getElementById(totalId).value = area > 0 && document.getElementById(rateId).value !== ''
-                ? (area * rate).toFixed(2)
-                : '';
+            openModal('editVendorModal');
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            ['stall_length_input', 'stall_width_input', 'stall_rate_per_sqm_input'].forEach(function (fieldId) {
-                document.getElementById(fieldId).addEventListener('input', function () {
-                    updateStallRate('stall_length_input', 'stall_width_input', 'stall_rate_per_sqm_input', 'stall_rate_input', 'stall_area_output');
+            document.querySelectorAll('[data-delete-url]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.getElementById('deleteVendorForm').action = button.dataset.deleteUrl;
+                    document.getElementById('deleteVendorName').textContent = button.dataset.vendorName;
+                    openModal('deleteVendorModal');
                 });
             });
+
+            const editModal = document.getElementById('editVendorModal');
+            if (editModal.dataset.oldVendorId) {
+                const editButton = Array.from(document.querySelectorAll('[data-vendor-id]'))
+                    .find(button => button.dataset.vendorId === editModal.dataset.oldVendorId);
+                if (editButton) {
+                    openEditVendorModal(editButton);
+                }
+            }
         });
-
-        // Add Stall -> Confirmation Flow
-        function proceedToStallConfirmation() {
-            const form = document.getElementById('addStallForm');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            const stallNumber = document.getElementById('stall_number_input').value;
-            const section = document.getElementById('stall_section_input').value;
-            const location = document.getElementById('stall_location_input').value || 'Location not specified';
-            const type = document.getElementById('stall_type_input').value;
-            const length = Number(document.getElementById('stall_length_input').value);
-            const width = Number(document.getElementById('stall_width_input').value);
-            const rate = parseFloat(document.getElementById('stall_rate_input').value) || 0;
-            const status = document.getElementById('stall_status_input').value;
-
-            document.getElementById('cs_stall_number').textContent = `Stall ${stallNumber}`;
-            document.getElementById('cs_section').textContent = `Section: ${section}`;
-            document.getElementById('cs_details').textContent = `Type: ${type} · ${length}m × ${width}m (${(length * width).toFixed(2)} m²)`;
-            document.getElementById('cs_location').textContent = `Location: ${location}`;
-            document.getElementById('cs_rate').textContent = `₱${rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / month`;
-            document.getElementById('cs_status').textContent = status;
-
-            const agreeCheckbox = document.getElementById('cs_agree_checkbox');
-            agreeCheckbox.checked = false;
-            toggleStallSubmitButton();
-
-            closeModal('addStallModal');
-            openModal('confirmStallModal');
-        }
-
-        function backToEditStall() {
-            closeModal('confirmStallModal');
-            openModal('addStallModal');
-        }
-
-        function toggleStallSubmitButton() {
-            const checked = document.getElementById('cs_agree_checkbox').checked;
-            const submitBtn = document.getElementById('cs_submit_btn');
-            submitBtn.disabled = !checked;
-            if (checked) {
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            } else {
-                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
-        function executeStallSubmit() {
-            document.getElementById('addStallForm').submit();
-        }
     </script>
 </x-layouts.admin>
