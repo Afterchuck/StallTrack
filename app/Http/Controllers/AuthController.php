@@ -58,8 +58,8 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route($user->role === 'vendor'
-            ? route('vendor.dashboard')
-            : route('dashboard'));
+            ? 'vendor.dashboard'
+            : 'dashboard');
     }
 
     public function showRegistration(): View
