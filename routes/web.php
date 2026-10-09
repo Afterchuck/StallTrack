@@ -38,6 +38,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::patch('/announcements/{announcement}/unpublish', [AuthController::class, 'unpublishAnnouncement'])->name('announcements.unpublish');
     Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
     Route::get('/vendors', [AuthController::class, 'vendors'])->name('vendors.index');
+    Route::get('/vendors/export', [AuthController::class, 'exportVendors'])->name('vendors.export');
     Route::get('/vendors/create', [AuthController::class, 'createVendor'])->name('vendors.create');
     Route::get('/vendors/{vendor}', [AuthController::class, 'showVendor'])->name('vendors.show');
     Route::get('/vendors/{vendor}/edit', [AuthController::class, 'editVendor'])->name('vendors.edit');

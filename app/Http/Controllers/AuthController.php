@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AuthController extends Controller
 {
@@ -486,6 +487,55 @@ class AuthController extends Controller
             'sections' => Vendor::whereNotNull('market_section')->distinct()->orderBy('market_section')->pluck('market_section'),
             'editableStalls' => Stall::orderBy('stall_number')->get(),
         ]);
+    }
+
+    public function exportVendors(Request $request): StreamedResponse
+    {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'stall_type' => ['nullable', 'string', 'max:100'],
+            'contract_status' => ['nullable', 'in:Active,Pending,Inactive'],
+        ]);
+
+        $query = Vendor::query()->with('user')->latest()->latest('id');
+        $search = trim((string) $request->input('search', ''));
+
+        if ($search !== '') {
+            $query->where(function ($vendorQuery) use ($search): void {
+                $vendorQuery->where('name', 'like', "%{$search}%")
+                    ->orWhere('market_section', 'like', "%{$search}%")
+                    ->orWhere('stall_number', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $query->when($request->filled('stall_type'), fn ($vendors) => $vendors->where('market_section', $request->input('stall_type')))
+            ->when($request->filled('contract_status'), fn ($vendors) => $vendors->where('status', $request->input('contract_status')));
+
+        $vendors = $query->get();
+
+        return response()->streamDownload(function () use ($vendors): void {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Vendor', 'Email', 'Contact', 'Stall', 'Section', 'Monthly rent', 'Billing cycle', 'Contract start', 'Contract end', 'Status', 'Approval status']);
+
+            foreach ($vendors as $vendor) {
+                fputcsv($output, [
+                    $vendor->name,
+                    $vendor->email,
+                    $vendor->contact_number,
+                    $vendor->stall_number,
+                    $vendor->market_section,
+                    $vendor->monthly_rent,
+                    $vendor->billing_cycle,
+                    $vendor->contract_start_date?->toDateString(),
+                    $vendor->contract_end_date?->toDateString(),
+                    $vendor->status,
+                    $vendor->approval_status,
+                ]);
+            }
+
+            fclose($output);
+        }, 'stalltrack-vendors.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function stalls(Request $request): View

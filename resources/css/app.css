@@ -39,11 +39,16 @@
     .outline-button, .black-button, .accent-button, .stall-add-button, .stall-filter-button { @apply inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-semibold no-underline transition; }
     .outline-button, .stall-filter-button { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-100; }
     .black-button, .accent-button, .stall-add-button { @apply bg-emerald-700 text-white hover:bg-emerald-800; }
-    .metrics-grid, .stall-summary-grid { @apply mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4; }
+    .metrics-grid, .stall-summary-grid, .collection-summary-grid { @apply mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4; }
     .metrics-grid article, .stall-summary-grid article { @apply relative rounded-lg border border-slate-200 bg-white p-5 shadow-sm; }
     .metrics-grid small, .stall-summary-grid small { @apply block text-xs font-semibold uppercase tracking-wide text-slate-500; }
     .metrics-grid strong, .stall-summary-grid strong { @apply mt-3 block text-2xl font-bold text-slate-900; }
     .metrics-grid em, .stall-summary-grid span { @apply mt-2 block text-xs not-italic text-slate-500; }
+    .collection-summary-grid { @apply mb-8 xl:grid-cols-2; }
+    .collection-summary-grid article { @apply min-w-0 rounded-lg border border-slate-200 bg-white p-5 shadow-sm; }
+    .collection-summary-grid small { @apply block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+    .collection-summary-grid strong { @apply mt-3 block truncate text-2xl font-bold text-slate-900; }
+    .collection-summary-grid span { @apply mt-2 block text-xs leading-5 text-slate-500; }
     .good, .green-text, .good-number { @apply text-emerald-700; }
     .warning, .warning-number { @apply text-amber-600; }
     .danger, .amount-overdue { @apply text-rose-700; }
@@ -160,6 +165,9 @@
     .vendor-management-tabs span { @apply ml-auto self-center text-xs text-slate-400; }
     .vendor-filter-bar, .rental-filter-bar, .stall-filter-bar { @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm; }
     .vendor-filter-bar select, .rental-filter-bar select, .stall-filter-bar select { @apply h-10 rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-600 focus:border-emerald-600 focus:ring-3 focus:ring-emerald-600/15; }
+    .vendor-filter-bar .vendor-search-control { @apply min-w-64 flex-1; }
+    .vendor-filter-bar .vendor-section-filter { @apply flex h-10 items-center gap-2 text-sm text-slate-700; }
+    .vendor-filter-reset { @apply rounded-md px-3 py-2.5 text-sm text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-900; }
     .vendor-filter-bar small { @apply ml-auto text-xs text-slate-400; }
     .rental-filter-bar label, .stall-filter-bar label { @apply flex h-10 min-w-64 flex-1 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-slate-400; }
     .rental-filter-bar input, .stall-filter-bar input { @apply min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400; }
@@ -206,6 +214,8 @@
     .app-confirm-value { @apply sm:w-2/3 text-slate-800 space-y-1 font-medium; }
     .app-notice-box { @apply rounded-xl bg-blue-50/80 border border-blue-100 p-4 text-xs text-slate-700 flex gap-3 items-start; }
     .app-stall-pill { @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200; }
+    .notification-list { @apply max-h-[calc(100vh-18rem)] space-y-3 overflow-y-auto overscroll-contain pr-2; scrollbar-color: #94a3b8 transparent; }
+    .notification-list:focus-visible { @apply rounded-md outline-2 outline-offset-2 outline-emerald-700; }
 
     @media (max-width: 768px) {
         .admin-header { @apply flex-wrap gap-3 px-4 py-3; }

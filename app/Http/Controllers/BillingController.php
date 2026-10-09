@@ -66,7 +66,12 @@ class BillingController extends Controller
             ->when($request->input('assignment') === 'unassigned', fn ($receipts) => $receipts->whereNull('bill_id'));
         $query->when($request->filled('due_from'), fn ($bills) => $bills->whereDate('due_date', '>=', $request->input('due_from')))
             ->when($request->filled('due_to'), fn ($bills) => $bills->whereDate('due_date', '<=', $request->input('due_to')));
-        switch ($request->input('status', 'Outstanding')) {
+        $status = $request->input('status');
+        $searchingBills = $request->filled('q') || $request->filled('vendor_id');
+        $allBillsSelected = str_contains((string) $request->server('QUERY_STRING'), 'status=')
+            && $request->input('status') === null;
+
+        switch ($allBillsSelected ? null : ($status ?? ($searchingBills ? null : 'Outstanding'))) {
             case 'Outstanding':
                 $query->outstanding();
                 break;

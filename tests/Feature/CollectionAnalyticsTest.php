@@ -84,6 +84,23 @@ class CollectionAnalyticsTest extends TestCase
             ->assertViewHas('receipts', fn ($receipts): bool => $receipts->total() === 1 && $receipts->first()->receipt_number === 'FIND-100');
     }
 
+    public function test_bill_search_includes_non_outstanding_bills_unless_status_is_selected(): void
+    {
+        $vendor = Vendor::factory()->create(['name' => 'Paid Search Vendor']);
+        Bill::factory()->for($vendor)->create([
+            'vendor_name' => $vendor->name,
+            'amount' => '100.00',
+            'paid_amount' => '100.00',
+        ]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('payments', ['q' => 'Paid Search Vendor']))
+            ->assertViewHas('bills', fn ($bills): bool => $bills->total() === 1);
+
+        $this->get(route('payments', ['q' => 'Paid Search Vendor', 'status' => 'Outstanding']))
+            ->assertViewHas('bills', fn ($bills): bool => $bills->total() === 0);
+    }
+
     public function test_bill_filters_do_not_hide_payments_from_the_chart_and_pagination_keeps_filters(): void
     {
         $vendor = Vendor::factory()->create();

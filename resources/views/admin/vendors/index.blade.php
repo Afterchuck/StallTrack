@@ -26,7 +26,7 @@
     </section>
 
     <div class="vendor-management-actions mt-4 flex flex-wrap items-center gap-3">
-        <a class="vendor-secondary-action inline-flex items-center gap-1.5" href="{{ route('reports') }}">
+        <a class="vendor-secondary-action inline-flex items-center gap-1.5" href="{{ route('vendors.export', request()->query()) }}">
             <svg class="size-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Export Inventory & Leases
         </a>
@@ -36,15 +36,15 @@
         <label class="vendor-search-control">
             <input name="search" type="search" value="{{ request('search') }}" placeholder="Search vendor, stall, or section">
         </label>
-        <select name="contract_status">
+        <select name="contract_status" aria-label="Vendor status">
             <option value="">All statuses</option>
             <option value="Active" @selected(request('contract_status') === 'Active')>Active</option>
             <option value="Pending" @selected(request('contract_status') === 'Pending')>Pending</option>
             <option value="Inactive" @selected(request('contract_status') === 'Inactive')>Inactive</option>
         </select>
-        <label>Section<select name="stall_type"><option value="">All sections</option>@foreach ($sections as $section)<option @selected(request('stall_type') === $section)>{{ $section }}</option>@endforeach</select></label>
-        <button class="vendor-secondary-action" type="submit">Filter</button>
-        <a href="{{ route('vendors.index') }}">Reset</a>
+        <label class="vendor-section-filter">Section<select name="stall_type" aria-label="Market section"><option value="">All sections</option>@foreach ($sections as $section)<option value="{{ $section }}" @selected(request('stall_type') === $section)>{{ $section }}</option>@endforeach</select></label>
+        <button class="vendor-secondary-action cursor-pointer" type="submit">Filter</button>
+        <a class="vendor-filter-reset" href="{{ route('vendors.index') }}">Reset</a>
     </form>
 
     <section class="vendor-directory-card">

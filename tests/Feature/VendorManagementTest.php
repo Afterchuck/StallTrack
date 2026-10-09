@@ -73,6 +73,25 @@ class VendorManagementTest extends TestCase
         $this->assertDatabaseHas('payments', ['vendor_name' => 'Vendor Updated', 'receipt_number' => 'OR-100001']);
     }
 
+    public function test_admin_can_export_filtered_vendor_inventory(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Vendor::create(['name' => 'Export Me', 'email' => 'export@example.com', 'market_section' => 'Dry Goods', 'status' => 'Inactive']);
+        Vendor::create(['name' => 'Do Not Export', 'email' => 'other@example.com', 'market_section' => 'Fresh Produce', 'status' => 'Active']);
+
+        $response = $this->actingAs($admin)->get(route('vendors.export', [
+            'search' => 'Export Me',
+            'contract_status' => 'Inactive',
+            'stall_type' => 'Dry Goods',
+        ]));
+
+        $response->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $this->assertStringContainsString('Export Me', $response->streamedContent());
+        $this->assertStringNotContainsString('Do Not Export', $response->streamedContent());
+    }
+
     public function test_admin_can_edit_a_vendor_from_the_management_popup(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

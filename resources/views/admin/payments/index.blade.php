@@ -7,23 +7,36 @@
     @if ($errors->any())<div class="form-alert" role="alert"><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <form method="GET" action="{{ route('payments') }}" class="dashboard-panel mb-5 flex flex-wrap items-end gap-3">
         <x-collection-query :except="['q', 'vendor_id']" />
+        @if (request()->query('status') === '')
+            <input type="hidden" name="status" value="">
+        @endif
         <label class="field grow">Search bills &amp; receipts<input type="search" name="q" maxlength="100" value="{{ request('q') }}" placeholder="Vendor, email, stall, contract, receipt"></label>
         <label class="field">Vendor<select name="vendor_id"><option value="">All vendors</option>@foreach ($vendors as $vendor)<option value="{{ $vendor->id }}" @selected(request('vendor_id') == $vendor->id)>{{ $vendor->name }}</option>@endforeach</select></label>
         <button class="app-btn-primary" type="submit">Search</button><a href="{{ route('payments') }}">Reset all</a>
     </form>
     <x-collection-chart :chart="$chart" />
-    <section class="vendor-summary-grid">
-        <article><small>Confirmed collections · all dates, matching search/vendor/method</small><strong>₱{{ number_format((float) $paidTotal, 2) }}</strong></article>
-        <article><small>Outstanding · matching bill filters</small><strong>₱{{ number_format((float) $balanceTotal, 2) }}</strong></article>
+    <section class="collection-summary-grid" aria-label="Collection totals">
+        <article>
+            <small>Confirmed collections</small>
+            <strong>₱{{ number_format((float) $paidTotal, 2) }}</strong>
+            <span>All dates · search, vendor, and method filters</span>
+        </article>
+        <article>
+            <small>Outstanding balance</small>
+            <strong>₱{{ number_format((float) $balanceTotal, 2) }}</strong>
+            <span>Based on the bill filters below</span>
+        </article>
     </section>
     <section class="dashboard-panel">
         <div class="panel-title"><div><h2>Billing periods</h2><p>{{ $bills->total() }} matching bills. Due-date and status filters apply here only; the chart uses payment dates.</p></div></div>
         <form method="GET" action="{{ route('payments') }}" class="mb-5 flex flex-wrap items-end gap-3">
             <x-collection-query :except="['status', 'due_from', 'due_to', 'sort']" />
             <label class="field">Status<select name="status">
-                <option value="" @selected(request()->has('status') && !request('status'))>All bills</option>
+                <option value="" @selected(request()->has('status') ? request('status') === '' : (request()->filled('q') || request()->filled('vendor_id')))>
+                    All bills
+                </option>
                 @foreach (['Outstanding', 'Unpaid', 'Partially paid', 'Paid', 'Overdue'] as $status)
-                    <option value="{{ $status }}" @selected(request('status', 'Outstanding') === $status)>{{ $status }}</option>
+                    <option value="{{ $status }}" @selected(request('status', request()->filled('q') || request()->filled('vendor_id') ? '' : 'Outstanding') === $status)>{{ $status }}</option>
                 @endforeach
             </select></label>
             <label class="field">Due from<input type="date" name="due_from" value="{{ request('due_from') }}"></label>

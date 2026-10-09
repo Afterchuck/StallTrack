@@ -6,6 +6,7 @@
         @endif
         <section class="rounded-md border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold">Your notifications</h2>
+            <div class="notification-list" tabindex="0" aria-label="Support notifications">
             @forelse ($notifications as $notification)
                 <article class="border-b border-slate-200 py-4">
                     <div class="flex flex-wrap justify-between gap-2">
@@ -21,6 +22,7 @@
             @empty
                 <p class="py-5 text-sm text-slate-500">No support notifications yet.</p>
             @endforelse
+            </div>
             {{ $notifications->withQueryString()->links() }}
         </section>
         <section class="rounded-md border border-slate-200 bg-white p-5">
