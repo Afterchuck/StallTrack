@@ -18,6 +18,7 @@
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "false",
+        "TRUSTED_PROXIES": "*",
         "LOG_CHANNEL": "stderr",
         "SESSION_DRIVER": "database",
         "SESSION_SECURE_COOKIE": "true",
