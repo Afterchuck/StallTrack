@@ -57,7 +57,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($user->role === 'vendor'
+        return redirect()->route($user->role === 'vendor'
             ? route('vendor.dashboard')
             : route('dashboard'));
     }
