@@ -7,6 +7,7 @@ use App\Notifications\SupportRequestSubmitted;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         View::composer('components.layouts.admin', function (\Illuminate\View\View $view): void {
             $view->with('unreadSupportCount', auth()->user()?->unreadNotifications()->where('type', SupportRequestSubmitted::class)->count() ?? 0);
         });
