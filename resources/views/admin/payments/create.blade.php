@@ -56,12 +56,7 @@
                 <input id="paid_at" name="paid_at" type="date" value="{{ now()->format('Y-m-d') }}" required>
             </div>
 
-            <div class="field">
-                <label for="receipt_number">
-                    Receipt number
-                </label>
-                <input id="receipt_number" name="receipt_number" placeholder="OR-0062" required>
-            </div>
+            <p class="text-sm text-slate-500">A unique receipt number will be generated automatically when this payment is saved.</p>
 
             <div class="form-actions">
                 <a href="{{ route('payments') }}">

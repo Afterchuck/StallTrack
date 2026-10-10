@@ -231,12 +231,11 @@ class AuthController extends Controller
             'vendor_name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['required', 'date'],
-            'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        Payment::create([...$validated, 'vendor_id' => $this->currentVendor()?->id]);
+        $payment = Payment::create([...$validated, 'vendor_id' => $this->currentVendor()?->id]);
 
-        return redirect()->route('vendor.dashboard')->with('success', 'Payment submitted successfully.');
+        return redirect()->route('vendor.dashboard')->with('success', 'Payment submitted successfully. Receipt '.$payment->receipt_number.' was generated automatically.');
     }
 
     public function createVendor(): View
@@ -403,13 +402,12 @@ class AuthController extends Controller
         $validated = $request->validate([
             'amount' => ['required', 'regex:/^\d{1,8}(\.\d{1,2})?$/', 'numeric', 'min:0.01', 'max:99999999.99'],
             'paid_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
-        Payment::create([...$validated, 'vendor_id' => $vendor->id, 'vendor_name' => $vendor->name]);
-        $this->recordActivity('created', $vendor, "Recorded payment for {$vendor->name}.", ['receipt_number' => $validated['receipt_number']]);
+        $payment = Payment::create([...$validated, 'vendor_id' => $vendor->id, 'vendor_name' => $vendor->name]);
+        $this->recordActivity('created', $vendor, "Recorded payment for {$vendor->name}.", ['receipt_number' => $payment->receipt_number]);
 
-        return redirect()->route('vendors.show', $vendor)->with('success', 'Payment recorded and reflected in the vendor portal.');
+        return redirect()->route('vendors.show', $vendor)->with('success', 'Payment recorded and reflected in the vendor portal. Receipt '.$payment->receipt_number.' was generated automatically.');
     }
 
     public function markVendorPaymentAsPaid(Request $request, Vendor $vendor, Payment $payment): RedirectResponse
@@ -853,18 +851,17 @@ class AuthController extends Controller
             'vendor_id' => ['required', 'exists:vendors,id'],
             'amount' => ['required', 'regex:/^\d{1,8}(\.\d{1,2})?$/', 'numeric', 'min:0.01', 'max:99999999.99'],
             'paid_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
         ]);
 
         $vendor = Vendor::findOrFail($validated['vendor_id']);
-        Payment::create([
+        $payment = Payment::create([
             ...$validated,
             'vendor_id' => $vendor->id,
             'vendor_name' => $vendor->name,
         ]);
-        $this->recordActivity('created', $vendor, "Recorded payment for {$vendor->name}.", ['receipt_number' => $validated['receipt_number']]);
+        $this->recordActivity('created', $vendor, "Recorded payment for {$vendor->name}.", ['receipt_number' => $payment->receipt_number]);
 
-        return redirect()->route('payments')->with('success', 'Payment recorded successfully.');
+        return redirect()->route('payments')->with('success', 'Payment recorded successfully. Receipt '.$payment->receipt_number.' was generated automatically.');
     }
 
     public function dueDates(Request $request): View

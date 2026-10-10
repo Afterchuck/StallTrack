@@ -155,31 +155,32 @@ class BillingController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'regex:/^\d{1,8}(\.\d{1,2})?$/', 'numeric', 'min:0.01', 'max:99999999.99'],
             'paid_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'receipt_number' => ['required', 'string', 'max:50', 'unique:payments,receipt_number'],
             'payment_method' => ['required', 'in:Cash,Bank transfer,Other'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'confirmed' => ['accepted'],
         ]);
 
         try {
-            DB::transaction(function () use ($request, $data, $bill): void {
+            $payment = DB::transaction(function () use ($request, $data, $bill): Payment {
                 $lockedBill = Bill::lockForUpdate()->findOrFail($bill->id);
                 $this->applyAmount($lockedBill, (string) $data['amount']);
                 $payment = $lockedBill->payments()->create([
                     'vendor_id' => $lockedBill->vendor_id,
                     'vendor_name' => $lockedBill->vendor_name,
                     'amount' => Bill::decimal(Bill::cents((string) $data['amount'])),
-                    'paid_at' => $data['paid_at'], 'receipt_number' => $data['receipt_number'],
+                    'paid_at' => $data['paid_at'],
                     'payment_method' => $data['payment_method'], 'notes' => $data['notes'] ?? null,
                     'status' => 'Paid', 'recorded_by' => $request->user()->id,
                 ]);
                 $this->audit($request, $lockedBill, 'payment_recorded', 'Received '.$payment->amount.' for bill #'.$lockedBill->id, $payment);
+
+                return $payment;
             });
         } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['receipt_number' => 'This receipt was already recorded. Check payment history before trying again.']);
+            throw ValidationException::withMessages(['payment' => 'A unique receipt could not be issued. Please try recording the payment again.']);
         }
 
-        return redirect()->route('bills.show', $bill)->with('success', 'Payment confirmed. The remaining balance has been updated.');
+        return redirect()->route('bills.show', $bill)->with('success', 'Payment confirmed. Receipt '.$payment->receipt_number.' was generated automatically. The remaining balance has been updated.');
     }
 
     public function allocate(Request $request, Bill $bill): RedirectResponse

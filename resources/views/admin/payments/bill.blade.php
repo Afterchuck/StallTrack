@@ -36,10 +36,10 @@
                 <label class="field">Amount received (₱)<input id="received-amount" type="number" name="amount" min="0.01" max="{{ $bill->balance }}" step="0.01" value="{{ old('amount', $bill->balance) }}" required></label>
                 <p id="remaining-preview" class="text-sm text-emerald-700" aria-live="polite"></p>
                 <label class="field">Payment date<input type="date" name="paid_at" max="{{ today()->toDateString() }}" value="{{ old('paid_at', today()->toDateString()) }}" required></label>
-                <label class="field">Receipt / reference number<input name="receipt_number" maxlength="50" value="{{ old('receipt_number') }}" required></label>
+                <p class="text-sm text-slate-500">A unique receipt number will be generated automatically when this payment is confirmed.</p>
                 <label class="field">Payment method<select name="payment_method" required>@foreach (['Cash', 'Bank transfer', 'Other'] as $method)<option value="{{ $method }}" @selected(old('payment_method', 'Cash') === $method)>{{ $method }}</option>@endforeach</select></label>
                 <label class="field">Notes (optional)<textarea name="notes" maxlength="1000" rows="2" class="rounded border border-slate-300 p-2">{{ old('notes') }}</textarea></label>
-                <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="confirmed" value="1" required>I confirm this money has been received and the receipt details are correct.</label>
+                <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="confirmed" value="1" required>I confirm this money has been received and the payment details are correct.</label>
                 <div class="form-actions">
                     <button type="button" class="app-btn-cancel" onclick="document.getElementById('payment-dialog').close()">Cancel</button>
                     <button type="submit" class="app-btn-primary">Confirm payment</button>
@@ -105,7 +105,7 @@
             }
             received.addEventListener('input', previewBalance);
             previewBalance();
-            @if ($errors->any() && old('receipt_number') !== null)
+            @if ($errors->any() && old('amount') !== null)
                 document.getElementById('payment-dialog').showModal();
             @endif
         </script>

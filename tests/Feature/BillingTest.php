@@ -33,6 +33,16 @@ class BillingTest extends TestCase
         $this->assertDatabaseCount('bills', 1);
     }
 
+    public function test_bill_payment_form_explains_that_receipts_are_generated_automatically(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $bill = Bill::factory()->create();
+
+        $this->actingAs($admin)->get(route('bills.show', $bill))
+            ->assertSee('A unique receipt number will be generated automatically when this payment is confirmed.')
+            ->assertDontSee('name="receipt_number"', false);
+    }
+
     public function test_partial_then_full_payment_updates_both_dashboards_and_keeps_next_period_unpaid(): void
     {
         $this->freezeTime();
@@ -45,22 +55,26 @@ class BillingTest extends TestCase
             'period_end' => today()->addMonth()->endOfMonth(),
         ]);
 
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('1000.00', 'PART-1'))
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('1000.00'))
             ->assertSessionHasNoErrors()->assertRedirect(route('bills.show', $bill));
 
+        $firstReceipt = Payment::where('bill_id', $bill->id)->value('receipt_number');
+        $this->assertMatchesRegularExpression('/^RCT-[0-9A-HJKMNP-TV-Z]{26}$/', $firstReceipt);
         $this->assertSame('Partially paid', $bill->fresh()->status);
         $this->assertSame('2500.00', $bill->fresh()->balance);
         $this->assertTrue($bill->fresh()->is_overdue);
         $this->assertDatabaseHas('payments', ['bill_id' => $bill->id, 'amount' => 1000, 'status' => 'Paid', 'recorded_by' => $admin->id]);
-        $this->get(route('bills.show', $bill))->assertOk()->assertSee('Partially paid')->assertSee('PART-1');
+        $this->get(route('bills.show', $bill))->assertOk()->assertSee('Partially paid')->assertSee($firstReceipt);
         $this->get(route('payments'))->assertOk()->assertSee('Partially paid');
         $this->get(route('dashboard'))->assertOk()->assertViewHas('outstandingTotal', 6000)
             ->assertViewHas('collectedMonthly', 1000);
         $this->actingAs($user)->get(route('vendor.dashboard'))->assertOk()->assertSee('Partially paid')->assertSee('2,500.00');
-        $this->get(route('vendor.payments'))->assertOk()->assertSee('PART-1')->assertViewHas('totalPaid', 1000);
+        $this->get(route('vendor.payments'))->assertOk()->assertSee($firstReceipt)->assertViewHas('totalPaid', 1000);
 
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('2500.00', 'PART-2'))
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('2500.00'))
             ->assertSessionHasNoErrors()->assertRedirect();
+        $secondReceipt = Payment::where('bill_id', $bill->id)->where('receipt_number', '!=', $firstReceipt)->value('receipt_number');
+        $this->assertNotSame($firstReceipt, $secondReceipt);
         $this->assertSame('Paid', $bill->fresh()->status);
         $this->assertSame('0.00', $bill->fresh()->balance);
         $this->assertSame('Unpaid', $nextBill->fresh()->status);
@@ -71,19 +85,27 @@ class BillingTest extends TestCase
         $this->assertDatabaseCount('activity_logs', 2);
     }
 
-    public function test_receipt_retry_and_overpayment_cannot_change_the_balance(): void
+    public function test_receipts_are_generated_uniquely_and_overpayment_cannot_change_the_balance(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create(['amount' => '100.00']);
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('40.00', 'ONE'))
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), [...$this->paymentData('40.00'), 'receipt_number' => 'CLIENT-CHOSEN'])
             ->assertSessionHasNoErrors();
 
-        $this->post(route('bills.payments.store', $bill), $this->paymentData('40.00', 'ONE'))->assertSessionHasErrors('receipt_number');
-        $this->post(route('bills.payments.store', $bill), $this->paymentData('60.01', 'OVER'))->assertSessionHasErrors('amount');
+        $firstReceipt = Payment::firstOrFail()->receipt_number;
+        $this->assertMatchesRegularExpression('/^RCT-[0-9A-HJKMNP-TV-Z]{26}$/', $firstReceipt);
+        $this->assertNotSame('CLIENT-CHOSEN', $firstReceipt);
 
-        $this->assertSame('60.00', $bill->fresh()->balance);
-        $this->assertDatabaseCount('payments', 1);
-        $this->assertDatabaseCount('activity_logs', 1);
+        $this->post(route('bills.payments.store', $bill), [...$this->paymentData('40.00'), 'receipt_number' => 'CLIENT-CHOSEN'])
+            ->assertSessionHasNoErrors();
+        $secondReceipt = Payment::where('receipt_number', '!=', $firstReceipt)->value('receipt_number');
+        $this->assertMatchesRegularExpression('/^RCT-[0-9A-HJKMNP-TV-Z]{26}$/', $secondReceipt);
+        $this->assertNotSame($firstReceipt, $secondReceipt);
+        $this->post(route('bills.payments.store', $bill), $this->paymentData('20.01'))->assertSessionHasErrors('amount');
+
+        $this->assertSame('20.00', $bill->fresh()->balance);
+        $this->assertDatabaseCount('payments', 2);
+        $this->assertDatabaseCount('activity_logs', 2);
     }
 
     public function test_centavo_installments_settle_exactly_and_paid_bills_reject_more_money(): void
@@ -91,12 +113,12 @@ class BillingTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create(['amount' => '0.30']);
 
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('0.10', 'CENT-1'))->assertSessionHasNoErrors();
-        $this->post(route('bills.payments.store', $bill), $this->paymentData('0.20', 'CENT-2'))->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('0.10'))->assertSessionHasNoErrors();
+        $this->post(route('bills.payments.store', $bill), $this->paymentData('0.20'))->assertSessionHasNoErrors();
 
         $this->assertSame('0.00', $bill->fresh()->balance);
         $this->assertSame('Paid', $bill->fresh()->status);
-        $this->post(route('bills.payments.store', $bill), $this->paymentData('0.01', 'CENT-3'))->assertSessionHasErrors('amount');
+        $this->post(route('bills.payments.store', $bill), $this->paymentData('0.01'))->assertSessionHasErrors('amount');
         $this->assertDatabaseCount('payments', 2);
     }
 
@@ -105,7 +127,7 @@ class BillingTest extends TestCase
         $this->freezeTime();
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create(['amount' => '100.00']);
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('100.00', 'REVERSE'))->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('100.00'))->assertSessionHasNoErrors();
         $payment = Payment::firstOrFail();
 
         $this->patch(route('bills.payments.reverse', [$bill, $payment]), ['reversal_reason' => str_repeat('Correction. ', 30)])
@@ -147,7 +169,7 @@ class BillingTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create();
         $other = Bill::factory()->create();
-        $this->actingAs($admin)->post(route('bills.payments.store', $other), $this->paymentData('100.00', 'OTHER'))->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('bills.payments.store', $other), $this->paymentData('100.00'))->assertSessionHasNoErrors();
         $payment = Payment::firstOrFail();
 
         $this->post(route('bills.receipts.allocate', $bill), ['payment_id' => $payment->id, 'confirmed' => 1])->assertNotFound();
@@ -164,7 +186,7 @@ class BillingTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create();
 
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), [...$this->paymentData('100.00', 'INVALID'), ...$invalid])
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), [...$this->paymentData('100.00'), ...$invalid])
             ->assertSessionHasErrors($field);
 
         $this->assertSame('3500.00', $bill->fresh()->balance);
@@ -182,7 +204,6 @@ class BillingTest extends TestCase
             'future' => [['paid_at' => '2099-01-01'], 'paid_at'],
             'method' => [['payment_method' => 'Unknown'], 'payment_method'],
             'unconfirmed' => [['confirmed' => 0], 'confirmed'],
-            'receipt required' => [['receipt_number' => ''], 'receipt_number'],
         ];
     }
 
@@ -199,7 +220,7 @@ class BillingTest extends TestCase
         $this->actingAs($user)->get(route('payments'))->assertForbidden();
         $this->get(route('bills.show', $bill))->assertForbidden();
         $this->post(route('bills.store'), [])->assertForbidden();
-        $this->post(route('bills.payments.store', $bill), $this->paymentData('100', 'NO'))->assertForbidden();
+        $this->post(route('bills.payments.store', $bill), $this->paymentData('100'))->assertForbidden();
         $this->post(route('bills.receipts.allocate', $bill), ['payment_id' => $payment->id])->assertForbidden();
         $this->patch(route('bills.payments.reverse', [$other, $payment]), ['reversal_reason' => 'No'])->assertForbidden();
         $this->get(route('vendor.payments', ['vendor_id' => $other->vendor_id]))->assertOk()
@@ -232,7 +253,7 @@ class BillingTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $bill = Bill::factory()->create();
-        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('100', 'REASON'))->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('100'))->assertSessionHasNoErrors();
         $payment = Payment::firstOrFail();
 
         $this->patch(route('bills.payments.reverse', [$bill, $payment]), [])->assertSessionHasErrors('reversal_reason');
@@ -241,11 +262,11 @@ class BillingTest extends TestCase
         $this->assertSame('Paid', $payment->fresh()->status);
     }
 
-    /** @return array{amount: string, paid_at: string, receipt_number: string, payment_method: string, confirmed: int} */
-    private function paymentData(string $amount, string $receipt): array
+    /** @return array{amount: string, paid_at: string, payment_method: string, confirmed: int} */
+    private function paymentData(string $amount): array
     {
         return [
-            'amount' => $amount, 'paid_at' => today()->toDateString(), 'receipt_number' => $receipt,
+            'amount' => $amount, 'paid_at' => today()->toDateString(),
             'payment_method' => 'Cash', 'confirmed' => 1,
         ];
     }

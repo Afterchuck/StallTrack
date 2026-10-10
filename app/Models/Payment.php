@@ -5,10 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Payment extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Payment $payment): void {
+            if (blank($payment->receipt_number)) {
+                $payment->receipt_number = 'RCT-'.Str::ulid();
+            }
+        });
+    }
 
     protected $fillable = [
         'vendor_id', 'vendor_name', 'amount', 'paid_at', 'receipt_number', 'status',

@@ -14,6 +14,26 @@ class VendorManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_record_a_payment_without_entering_a_receipt_number(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendor = Vendor::factory()->create();
+
+        $this->actingAs($admin)->post(route('payments.store'), [
+            'vendor_id' => $vendor->id,
+            'amount' => '1200.00',
+            'paid_at' => today()->toDateString(),
+        ])->assertSessionHasNoErrors()->assertRedirect(route('payments'));
+
+        $payment = Payment::firstOrFail();
+        $this->assertMatchesRegularExpression('/^RCT-[0-9A-HJKMNP-TV-Z]{26}$/', $payment->receipt_number);
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'vendor_id' => $vendor->id,
+            'receipt_number' => $payment->receipt_number,
+        ]);
+    }
+
     public function test_admin_can_manage_a_vendor_payment_and_details(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
@@ -41,13 +61,15 @@ class VendorManagementTest extends TestCase
             'receipt_number' => 'OR-100001',
         ])->assertRedirect(route('vendors.show', $vendor));
 
+        $payment = Payment::firstOrFail();
+        $this->assertMatchesRegularExpression('/^RCT-[0-9A-HJKMNP-TV-Z]{26}$/', $payment->receipt_number);
+        $this->assertNotSame('OR-100001', $payment->receipt_number);
         $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
             'vendor_name' => 'Vendor One',
-            'receipt_number' => 'OR-100001',
+            'receipt_number' => $payment->receipt_number,
             'status' => 'Recorded',
         ]);
-
-        $payment = Payment::where('receipt_number', 'OR-100001')->firstOrFail();
 
         $this->actingAs($admin)->patch(route('vendors.payments.paid', [$vendor, $payment]))
             ->assertRedirect(route('vendors.show', $vendor));
@@ -70,7 +92,7 @@ class VendorManagementTest extends TestCase
         ])->assertRedirect(route('vendors.show', $vendor));
 
         $this->assertDatabaseHas('vendors', ['id' => $vendor->id, 'name' => 'Vendor Updated', 'stall_number' => 'B-05']);
-        $this->assertDatabaseHas('payments', ['vendor_name' => 'Vendor Updated', 'receipt_number' => 'OR-100001']);
+        $this->assertDatabaseHas('payments', ['vendor_name' => 'Vendor Updated', 'receipt_number' => $payment->receipt_number]);
     }
 
     public function test_admin_can_edit_a_vendor_from_the_management_popup(): void
