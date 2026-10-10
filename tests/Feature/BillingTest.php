@@ -69,7 +69,17 @@ class BillingTest extends TestCase
         $this->get(route('dashboard'))->assertOk()->assertViewHas('outstandingTotal', 6000)
             ->assertViewHas('collectedMonthly', 1000);
         $this->actingAs($user)->get(route('vendor.dashboard'))->assertOk()->assertSee('Partially paid')->assertSee('2,500.00');
-        $this->get(route('vendor.payments'))->assertOk()->assertSee($firstReceipt)->assertViewHas('totalPaid', 1000);
+        $firstPayment = Payment::where('receipt_number', $firstReceipt)->firstOrFail();
+        $this->get(route('vendor.payments'))
+            ->assertOk()
+            ->assertSee($firstReceipt)
+            ->assertSee('View')
+            ->assertSee('data-open-receipt', false)
+            ->assertSee('data-receipt-number="'.$firstReceipt.'"', false)
+            ->assertSee('data-confirmed-date="'.$firstPayment->paid_at->format('M d, Y').'"', false)
+            ->assertSee('VENDOR PAYMENT RECEIPT')
+            ->assertSee('id="download-payment-receipt"', false)
+            ->assertViewHas('totalPaid', 1000);
 
         $this->actingAs($admin)->post(route('bills.payments.store', $bill), $this->paymentData('2500.00'))
             ->assertSessionHasNoErrors()->assertRedirect();
@@ -78,6 +88,11 @@ class BillingTest extends TestCase
         $this->assertSame('Paid', $bill->fresh()->status);
         $this->assertSame('0.00', $bill->fresh()->balance);
         $this->assertSame('Unpaid', $nextBill->fresh()->status);
+        $this->actingAs($user)->get(route('vendor.bills.show', $bill))
+            ->assertOk()
+            ->assertSee('View')
+            ->assertSee('data-receipt-number="'.$secondReceipt.'"', false);
+        $this->actingAs($admin);
         $this->get(route('payments', ['status' => 'Paid']))
             ->assertViewHas('bills', fn ($bills): bool => $bills->contains('id', $bill->id));
         $this->get(route('dashboard'))->assertViewHas('outstandingBills', fn ($bills): bool => ! $bills->contains('id', $bill->id));

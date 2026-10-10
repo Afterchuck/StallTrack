@@ -14,7 +14,7 @@
         <section class="rounded-md border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold">Receipt history</h2>
             <div class="dashboard-table-wrap"><table class="dashboard-table">
-                <thead><tr><th>Receipt</th><th>Billing period</th><th>Date received</th><th>Amount received</th><th>Status</th></tr></thead>
+                <thead><tr><th>Receipt</th><th>Billing period</th><th>Date received</th><th>Amount received</th><th>Status</th><th>Export</th></tr></thead>
                 <tbody>@forelse ($payments as $payment)
                     <tr>
                         <td>{{ $payment->receipt_number }}</td>
@@ -22,8 +22,9 @@
                         <td>{{ $payment->paid_at->format('M d, Y') }}</td>
                         <td>₱{{ number_format((float) $payment->amount, 2) }}</td>
                         <td>{{ $payment->status === 'Paid' ? 'Confirmed' : $payment->status }}</td>
+                        <td><x-receipt-download :payment="$payment" :bill="$payment->bill" /></td>
                     </tr>
-                @empty<tr><td colspan="5">No payments have been recorded for your account.</td></tr>@endforelse</tbody>
+                @empty<tr><td colspan="6">No payments have been recorded for your account.</td></tr>@endforelse</tbody>
             </table></div>
             <div class="mt-4">{{ $payments->withQueryString()->links() }}</div>
         </section>

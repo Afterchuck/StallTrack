@@ -140,7 +140,9 @@ class AuthController extends Controller
             'announcements' => Announcement::published()->orderByDesc('is_pinned')
                 ->orderByDesc('published_at')->orderByDesc('id')->paginate(5, ['*'], 'announcements_page'),
             'vendor' => $vendor,
-            'bills' => Bill::where('vendor_id', $vendor?->id ?? 0)->outstanding()->orderBy('due_date')->get(),
+            'bills' => Bill::where('vendor_id', $vendor?->id ?? 0)
+                ->with(['payments' => fn ($query) => $query->where('status', 'Paid')->orderBy('paid_at')->orderBy('id')])
+                ->outstanding()->orderBy('due_date')->get(),
             'payments' => Payment::where('vendor_id', $vendor?->id ?? 0)
                 ->latest('paid_at')->get(),
         ]);
@@ -217,7 +219,9 @@ class AuthController extends Controller
         return view('vendor.payments', [
             'vendor' => $vendor,
             'totalPaid' => Payment::where('vendor_id', $vendor?->id ?? 0)->where('status', 'Paid')->sum('amount'),
-            'bills' => Bill::where('vendor_id', $vendor?->id ?? 0)->orderByDesc('period_start')->paginate(10, ['*'], 'bills_page'),
+            'bills' => Bill::where('vendor_id', $vendor?->id ?? 0)
+                ->with(['payments' => fn ($query) => $query->where('status', 'Paid')->orderBy('paid_at')->orderBy('id')])
+                ->orderByDesc('period_start')->paginate(10, ['*'], 'bills_page'),
             'payments' => Payment::with('bill')->where('vendor_id', $vendor?->id ?? 0)
                 ->latest('paid_at')->latest('id')->paginate(10),
         ]);

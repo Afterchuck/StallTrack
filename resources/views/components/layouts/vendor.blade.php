@@ -5,6 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <title>{{ $title }} · Public Market</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -94,5 +95,32 @@
             {{ $slot }}
         </main>
     </div>
+
+    <dialog id="payment-receipt-dialog" class="fixed left-1/2 top-1/2 m-0 max-h-[90vh] w-[min(760px,calc(100%-2rem))] max-w-none -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border-0 bg-[#f7f9fc] p-3 shadow-2xl backdrop:bg-slate-950/60 sm:p-5" aria-labelledby="receipt-title">
+        <div class="sticky top-0 z-10 mb-4 flex justify-end gap-2 bg-[#f7f9fc]/95 py-2 backdrop-blur">
+            <button id="download-payment-receipt" class="app-btn-primary" type="button">Download PNG</button>
+            <button id="close-payment-receipt" class="app-btn-secondary" type="button">Close</button>
+        </div>
+        <article class="mx-auto max-w-[700px] rounded-[24px] border-2 border-slate-200 bg-white px-5 py-6 text-[#344256] shadow-sm sm:px-9 sm:py-7">
+            <header class="text-center">
+                <h2 class="m-0 text-3xl font-extrabold tracking-tight text-[#08295e] sm:text-4xl">StallTrack</h2>
+                <p class="mb-0 mt-0.5 text-sm font-bold text-slate-400">PUBLIC MARKET</p>
+                <p id="receipt-title" class="mb-0 mt-3 text-sm font-extrabold text-slate-400">VENDOR PAYMENT RECEIPT</p>
+                <p id="receipt-amount" class="mb-5 mt-2 text-4xl font-extrabold tracking-tight text-[#08295e] sm:text-5xl">₱0.00</p>
+            </header>
+            <dl class="m-0 grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-x-3 gap-y-3 text-xs sm:gap-x-6 sm:gap-y-4 sm:text-sm">
+                <dt class="font-extrabold uppercase text-slate-500">Reference ID</dt><dd id="receipt-reference" class="m-0 break-all text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Vendor</dt><dd id="receipt-vendor" class="m-0 break-words text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Bill</dt><dd id="receipt-bill" class="m-0 break-words text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Stall</dt><dd id="receipt-stall" class="m-0 break-words text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Payment method</dt><dd id="receipt-method" class="m-0 break-words text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Paid date</dt><dd id="receipt-date" class="m-0 break-words text-right font-extrabold"></dd>
+                <dt class="border-t border-slate-200 pt-3 font-extrabold uppercase text-slate-500 sm:pt-4">Billing start</dt><dd id="receipt-start" class="m-0 border-t border-slate-200 pt-3 text-right font-extrabold sm:pt-4"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Billing end</dt><dd id="receipt-end" class="m-0 text-right font-extrabold"></dd>
+                <dt class="font-extrabold uppercase text-slate-500">Payment status</dt><dd class="m-0 text-right font-extrabold text-emerald-700">Confirmed</dd>
+            </dl>
+            <p class="mb-0 mt-8 text-center text-xs font-bold text-slate-400">Generated from StallTrack vendor billing history</p>
+        </article>
+    </dialog>
 </body>
 </html>

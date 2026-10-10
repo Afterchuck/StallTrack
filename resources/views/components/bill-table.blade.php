@@ -4,7 +4,7 @@
         <thead><tr>
             @if ($manage)<th>Vendor / stall</th>@endif
             <th>Billing period</th><th>Bill amount</th><th>Paid so far</th><th>Remaining</th><th>Due date</th><th>Status</th>
-            @if ($manage)<th>Action</th>@endif
+            @if ($manage)<th>Action</th>@else<th>Receipts</th>@endif
         </tr></thead>
         <tbody>
             @forelse ($bills as $bill)
@@ -22,10 +22,20 @@
                         <span class="table-status {{ $bill->status === 'Paid' ? 'upcoming' : 'pending' }}">{{ $bill->status }}</span>
                         @if ($bill->is_overdue)<small class="text-rose-700">Overdue</small>@endif
                     </td>
-                    @if ($manage)<td><a href="{{ route('bills.show', $bill) }}">{{ $bill->status === 'Paid' ? 'Payment history' : 'Record payment' }}</a></td>@endif
+                    @if ($manage)
+                        <td><a href="{{ route('bills.show', $bill) }}">{{ $bill->status === 'Paid' ? 'Payment history' : 'Record payment' }}</a></td>
+                    @else
+                        <td class="space-y-2">
+                            @forelse ($bill->payments->where('status', 'Paid') as $payment)
+                                <x-receipt-download :payment="$payment" :bill="$bill" />
+                            @empty
+                                <span class="text-xs text-slate-500">Available after payment is confirmed</span>
+                            @endforelse
+                        </td>
+                    @endif
                 </tr>
             @empty
-                <tr><td colspan="{{ $manage ? 8 : 6 }}">No bills to show.</td></tr>
+                <tr><td colspan="{{ $manage ? 8 : 7 }}">No bills to show.</td></tr>
             @endforelse
         </tbody>
     </table>
