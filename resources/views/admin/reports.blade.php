@@ -5,22 +5,22 @@
     </section>
 
     @if ($errors->any())<div class="form-alert" role="alert">{{ $errors->first() }}</div>@endif
-    <form method="GET" action="{{ route('reports') }}" class="dashboard-panel mb-5 flex flex-wrap items-end gap-3">
+    <form method="GET" action="{{ route('reports') }}" class="mb-5 flex flex-wrap items-end gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <label class="field">Section<select name="section"><option value="">All sections</option>@foreach ($sections as $section)<option @selected(request('section') === $section)>{{ $section }}</option>@endforeach</select></label>
         <label class="field">From<input type="date" name="from" value="{{ request('from') }}"></label>
         <label class="field">To<input type="date" name="to" value="{{ request('to') }}"></label>
         <label class="field">Search activity<input type="search" name="search" maxlength="100" value="{{ request('search') }}" placeholder="Description, action, staff"></label>
         <label class="field">Action<select name="action"><option value="">All actions</option>@foreach ($actions as $action)<option @selected(request('action') === $action)>{{ $action }}</option>@endforeach</select></label>
-        <button type="submit" class="app-btn-primary">Filter reports</button><a href="{{ route('reports') }}">Reset</a>
+        <button type="submit" class="app-btn-primary">Filter reports</button><a class="text-sm font-semibold text-emerald-700" href="{{ route('reports') }}">Reset</a>
         <p class="w-full text-sm text-slate-500">Dates filter payment income and activity. Section filters current stall/vendor statistics and their balances/income using the vendor’s current section. Balances are current, not historical. Activity search/action filters affect the activity list only; activity remains across all sections.</p>
     </form>
-    <section class="mb-5 rounded border border-slate-200 bg-white p-5">
+    <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 class="text-base font-bold">Outstanding bill balances</h2>
         <p class="text-xl font-semibold">₱{{ number_format((float) $outstandingBalance, 2) }}</p>
         <a class="text-sm font-semibold text-emerald-700" href="{{ route('payments') }}">Review unpaid and partially paid bills</a>
     </section>
 
-    <section class="vendor-summary-grid">
+    <section class="vendor-summary-grid mt-5">
         <article><small>Total vendors</small><strong>{{ $vendorCounts['total'] }}</strong></article>
         <article><small>Active vendors</small><strong>{{ $vendorCounts['active'] }}</strong></article>
         <article><small>Occupied stalls</small><strong>{{ $stallCounts['occupied'] }} / {{ $stallCounts['total'] }}</strong></article>

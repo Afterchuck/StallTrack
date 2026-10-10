@@ -33,7 +33,9 @@ class CollectionAnalyticsTest extends TestCase
         $response = $this->get(route('payments', ['from' => '2026-10-01', 'to' => '2026-10-03']));
 
         $response->assertOk()->assertSee('View exact chart values')->assertViewHas('chart', fn (array $chart): bool => $chart['total'] === '500.30' && $chart['count'] === 3
-            && array_column($chart['points'], 'cents') === [30, 0, 50000]
+            && array_column($chart['points'], 'cents') === [50000, 0, 30]
+            && $chart['points'][0]['label'] === 'Oct 03, 2026'
+            && $chart['points'][2]['label'] === 'Oct 01, 2026'
         );
         $this->assertDatabaseCount('payments', 6);
         $this->assertSame('99.70', $bill->fresh()->balance);
@@ -55,7 +57,7 @@ class CollectionAnalyticsTest extends TestCase
     {
         return [
             'Sunday then Monday' => ['weekly', '2026-10-04', '2026-10-05', ['2026-10-04', '2026-10-05'], [1000, 1000]],
-            'ISO week crosses year' => ['weekly', '2026-12-31', '2027-01-04', ['2026-12-31', '2027-01-01', '2027-01-04'], [2000, 1000]],
+            'ISO week crosses year' => ['weekly', '2026-12-31', '2027-01-04', ['2026-12-31', '2027-01-01', '2027-01-04'], [1000, 2000]],
             'months including empty month' => ['monthly', '2026-01-01', '2026-03-31', ['2026-01-31', '2026-03-01'], [1000, 0, 1000]],
             'years including empty year' => ['yearly', '2024-01-01', '2026-12-31', ['2024-02-29', '2026-12-31'], [1000, 0, 1000]],
         ];

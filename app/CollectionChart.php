@@ -51,7 +51,7 @@ class CollectionChart
         return [
             'group' => $group, 'from' => $start->toDateString(), 'to' => $end->toDateString(),
             'total' => Bill::decimal($total), 'count' => $count,
-            'points' => array_values($points), 'maximum' => max(array_column($points, 'cents')),
+            'points' => array_values(array_reverse($points)), 'maximum' => max(array_column($points, 'cents')),
         ];
     }
 

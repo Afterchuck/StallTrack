@@ -8,11 +8,11 @@
         <div class="success-alert" role="status">{{ session('success') }}</div>
     @endif
 
-    <section class="form-panel">
+    <section class="form-panel w-full max-w-none">
         <form method="GET" action="{{ route('announcements') }}" class="mb-5 flex flex-wrap items-end gap-3">
-            <label class="field">Search announcements<input type="search" name="search" maxlength="100" value="{{ request('search') }}" placeholder="Title or message"></label>
-            <label class="field">Visibility<select name="visibility"><option value="">All announcements</option>@foreach (['Published', 'Draft', 'Expired', 'Scheduled'] as $visibility)<option @selected(request('visibility') === $visibility)>{{ $visibility }}</option>@endforeach</select></label>
-            <label class="field">Pin status<select name="pinned"><option value="">All</option><option value="1" @selected(request('pinned') === '1')>Pinned</option><option value="0" @selected(request('pinned') === '0')>Not pinned</option></select></label>
+            <label class="field min-w-[220px] flex-1">Search announcements<input type="search" name="search" maxlength="100" value="{{ request('search') }}" placeholder="Title or message"></label>
+            <label class="field w-full sm:w-48">Visibility<select name="visibility"><option value="">All announcements</option>@foreach (['Published', 'Draft', 'Expired', 'Scheduled'] as $visibility)<option @selected(request('visibility') === $visibility)>{{ $visibility }}</option>@endforeach</select></label>
+            <label class="field w-full sm:w-40">Pin status<select name="pinned"><option value="">All</option><option value="1" @selected(request('pinned') === '1')>Pinned</option><option value="0" @selected(request('pinned') === '0')>Not pinned</option></select></label>
             <button type="submit" class="app-btn-primary">Filter</button><a href="{{ route('announcements') }}">Reset</a>
         </form>
         <h2 class="text-lg font-bold text-slate-900">{{ $announcement->exists ? 'Edit announcement' : 'New announcement' }}</h2>
@@ -21,16 +21,16 @@
                 <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
             </div>
         @endif
-        <form class="portal-form" method="POST" action="{{ $announcement->exists ? route('announcements.update', $announcement) : route('announcements.store') }}">
+        <form class="portal-form lg:grid-cols-2" method="POST" action="{{ $announcement->exists ? route('announcements.update', $announcement) : route('announcements.store') }}">
             @csrf
             @if ($announcement->exists) @method('PUT') @endif
-            <label class="field">Title
+            <label class="field lg:col-span-2">Title
                 <input name="title" value="{{ old('title', $announcement->title) }}" maxlength="150" required>
             </label>
             <label class="field">Message
                 <textarea name="message" rows="6" maxlength="10000" required>{{ old('message', $announcement->message) }}</textarea>
             </label>
-            <div class="form-grid">
+            <div class="form-grid lg:grid-cols-1">
                 <label class="field">Visibility
                     <select name="status" required>
                         <option value="Draft" @selected(old('status', $announcement->published_at ? 'Published' : 'Draft') === 'Draft')>Draft — only admins can see it</option>
@@ -47,7 +47,7 @@
                 <input type="checkbox" name="is_pinned" value="1" @checked(old('is_pinned', $announcement->is_pinned))>
                 Pin to the top of the vendor announcements
             </label>
-            <div class="form-actions">
+            <div class="form-actions lg:col-span-2">
                 @if ($announcement->exists)<a href="{{ route('announcements') }}">Cancel editing</a>@endif
                 <button type="submit" class="app-btn-primary">Save announcement</button>
             </div>

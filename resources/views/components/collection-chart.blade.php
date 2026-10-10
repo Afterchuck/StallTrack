@@ -1,7 +1,7 @@
 @props(['chart'])
-<section class="dashboard-panel mb-5">
+<section class="vendor-directory-card mb-5 p-5">
     <div class="panel-title"><div><h2>Collected payments</h2><p>{{ $chart['from'] }} – {{ $chart['to'] }} · {{ $chart['count'] }} confirmed receipts · ₱{{ number_format((float) $chart['total'], 2) }}</p></div></div>
-    <form method="GET" action="{{ route('payments') }}" class="mb-4 flex flex-wrap items-end gap-3">
+    <form method="GET" action="{{ route('payments') }}" class="mb-4 flex flex-wrap items-end gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
         <x-collection-query :except="['group', 'from', 'to', 'method']" />
         <label class="field">Group by<select name="group">@foreach (['daily', 'weekly', 'monthly', 'yearly'] as $group)<option value="{{ $group }}" @selected($chart['group'] === $group)>{{ ucfirst($group) }}</option>@endforeach</select></label>
         <label class="field">Payment date from<input type="date" name="from" value="{{ request('from') }}"></label>
