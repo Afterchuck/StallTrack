@@ -92,6 +92,48 @@ class RentalBillingTest extends TestCase
         $this->assertDatabaseHas('bills', ['rental_id' => $second->id, 'amount' => 2000]);
     }
 
+    public function test_admin_can_create_the_next_bill_for_an_existing_rental_and_vendor_sees_it(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 4)->startOfDay());
+        $admin = User::factory()->create(['role' => 'admin']);
+        $vendorUser = User::factory()->create(['role' => 'vendor']);
+        $vendor = Vendor::factory()->for($vendorUser)->create();
+        $rental = Rental::factory()->for($vendor)->create();
+        $this->actingAs($admin);
+
+        $firstPreview = $this->get(route('rental-billing.preview', ['rental' => $rental, 'billing_date' => '2026-10-04']))->assertOk();
+        $this->post(route('rental-billing.send', $rental), [
+            'billing_date' => '2026-10-04',
+            'due_days' => 9,
+            'review_token' => $firstPreview->viewData('reviewToken'),
+            'confirmed' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $nextBillingDate = '2026-11-01';
+        $this->get(route('rental-billing', ['billing_date' => '2026-10-04']))
+            ->assertOk()
+            ->assertSee('Create next billing')
+            ->assertSee(route('rental-billing.preview', ['rental' => $rental, 'billing_date' => $nextBillingDate]), false);
+
+        $nextPreview = $this->get(route('rental-billing.preview', ['rental' => $rental, 'billing_date' => $nextBillingDate]))->assertOk();
+        $this->post(route('rental-billing.send', $rental), [
+            'billing_date' => $nextBillingDate,
+            'due_days' => 9,
+            'review_token' => $nextPreview->viewData('reviewToken'),
+            'confirmed' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('bills', 2);
+        $this->assertDatabaseCount('notifications', 2);
+        $nextBill = Bill::where('rental_id', $rental->id)->whereDate('period_start', '2026-11-01')->firstOrFail();
+        $this->assertSame('2026-11-30', $nextBill->period_end->toDateString());
+
+        $this->actingAs($vendorUser)->get(route('vendor.payments'))
+            ->assertOk()
+            ->assertSee('Nov 01, 2026')
+            ->assertSee('Your billing periods');
+    }
+
     public function test_legacy_bill_blocks_overlapping_send_without_creating_debt_again(): void
     {
         $rental = Rental::factory()->create();

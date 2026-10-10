@@ -34,14 +34,27 @@ class RentalBillingController extends Controller
         $rows = $rentals->getCollection()->map(function (Rental $rental) use ($date, $existingBills): array {
             try {
                 $period = $rental->billingPeriod($date);
-                $bill = $existingBills->first(fn (Bill $bill): bool => ($bill->rental_id === $rental->id || $bill->rental_id === null)
-                    && $bill->vendor_id === $rental->vendor_id
-                    && $bill->period_start->lte($period['end']) && $bill->period_end->gte($period['start'])
-                );
+                $bill = $existingBills->first(fn (Bill $bill): bool => $this->billOverlapsPeriod($bill, $rental, $period['start']->toDateString(), $period['end']->toDateString()));
+                $nextBillingDate = null;
 
-                return compact('rental', 'period', 'bill') + ['error' => null];
+                if ($bill && $period['end']->lt($rental->end_date)) {
+                    $candidateDate = $period['end']->addDay();
+                    $nextPeriod = $rental->billingPeriod($candidateDate->toDateString());
+                    $nextBillExists = $existingBills->contains(fn (Bill $existingBill): bool => $this->billOverlapsPeriod(
+                        $existingBill,
+                        $rental,
+                        $nextPeriod['start']->toDateString(),
+                        $nextPeriod['end']->toDateString()
+                    ));
+
+                    if (! $nextPeriod['partial'] && ! $nextBillExists) {
+                        $nextBillingDate = $candidateDate->toDateString();
+                    }
+                }
+
+                return compact('rental', 'period', 'bill', 'nextBillingDate') + ['error' => null];
             } catch (ValidationException $exception) {
-                return ['rental' => $rental, 'period' => null, 'bill' => null, 'error' => $exception->getMessage()];
+                return ['rental' => $rental, 'period' => null, 'bill' => null, 'nextBillingDate' => null, 'error' => $exception->getMessage()];
             }
         });
 
@@ -146,6 +159,14 @@ class RentalBillingController extends Controller
         return Bill::where('vendor_id', $rental->vendor_id)
             ->where(fn ($query) => $query->where('rental_id', $rental->id)->orWhereNull('rental_id'))
             ->where('period_start', '<=', $end)->where('period_end', '>=', $start)->first();
+    }
+
+    private function billOverlapsPeriod(Bill $bill, Rental $rental, string $start, string $end): bool
+    {
+        return ($bill->rental_id === $rental->id || $bill->rental_id === null)
+            && $bill->vendor_id === $rental->vendor_id
+            && $bill->period_start->lte($end)
+            && $bill->period_end->gte($start);
     }
 
     private function reviewToken(Rental $rental): string

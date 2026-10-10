@@ -37,6 +37,7 @@
                         @else<span class="table-status upcoming">Ready to review</span>@endif
                     </td>
                     <td>@if ($row['bill'])<a href="{{ route('bills.show', $row['bill']) }}">View bill / notify</a>
+                            @if ($row['nextBillingDate'])<a class="app-btn-secondary mt-2 inline-flex" href="{{ route('rental-billing.preview', ['rental' => $rental, 'billing_date' => $row['nextBillingDate']]) }}">Create next billing</a>@endif
                         @elseif (!$row['error'])<a href="{{ route('rental-billing.preview', ['rental' => $rental, 'billing_date' => $billingDate]) }}">Review &amp; send</a>@endif
                     </td>
                 </tr>
