@@ -40,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(2)->by('register-minute:'.$request->ip()),
             Limit::perHour(5)->by('register-hour:'.$request->ip()),
         ]);
+        RateLimiter::for('password-reset-request', fn (Request $request): array => [
+            Limit::perMinute(3)->by('password-reset-minute:'.$request->ip()),
+            Limit::perHour(10)->by('password-reset-hour:'.$request->ip()),
+        ]);
+        RateLimiter::for('password-reset-submit', fn (Request $request): array => [
+            Limit::perMinute(5)->by('password-reset-submit-minute:'.$request->ip()),
+            Limit::perHour(15)->by('password-reset-submit-hour:'.$request->ip()),
+        ]);
         View::composer('components.layouts.vendor', function (\Illuminate\View\View $view): void {
             $vendor = auth()->check() ? Vendor::forUser(auth()->user()) : null;
             $view->with('unreadNotificationCount', $vendor?->unreadNotifications()->count() ?? 0);

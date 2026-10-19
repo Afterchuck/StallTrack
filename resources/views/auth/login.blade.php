@@ -89,6 +89,7 @@
                     <div class="grid gap-2">
                         <div class="flex items-center justify-between gap-3">
                             <label class="text-sm font-semibold text-[#34463d]" for="password">Password</label>
+                            <a href="{{ route('password.request') }}" class="text-xs font-semibold text-[#087b59] underline decoration-[#087b59]/30 underline-offset-4 hover:decoration-[#087b59]">Forgot password?</a>
                         </div>
                         <div class="relative">
                             <svg class="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-[#819087]" viewBox="0 0 24 24" fill="none" aria-hidden="true">

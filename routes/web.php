@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminSupportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\RentalBillingController;
 use App\Http\Controllers\VendorNotificationController;
 use App\Http\Controllers\VendorSupportController;
@@ -22,6 +23,10 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login.store');
+    Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->middleware('throttle:password-reset-request')->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:password-reset-submit')->name('password.update');
     Route::get('/register', [AuthController::class, 'showRegistration'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:registration')->name('register.store');
 });
